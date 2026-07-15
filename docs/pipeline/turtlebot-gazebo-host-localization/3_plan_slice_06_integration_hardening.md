@@ -1,11 +1,11 @@
 # Slice 06 Plan: Alternate World, Safe Teleoperation, And Integration Hardening
 
 ## Implementation Status
-Status: planned
-Commit:
-Verification:
-Deviations:
-Follow-ups:
+Status: implemented
+Commit: `97d3df0`
+Verification: Both packages build successfully. The complete suite passes 105/105 tests with zero errors, failures, or skips; `git diff --check` passes. Automated coverage includes both strict world/map pairs, GUI/headless graph equivalence, selected-robot TwistStamped teleop safety, atomic and isolated fault boundaries, two independent localization contracts, mapping lock/save/load behavior, duplicate rejection, lifecycle/timestamp/TF failures, and health persistence. Live headless custom-world runs spawned both robots and reached `FLEET_READY`; a custom robot1 readiness gate completed, loaded the 60x50 custom map, and reached active map-server/AMCL lifecycle.
+Deviations: The custom world is deliberately capped at 0.2x real time so headless ROS bridge, sensor, and TF delivery remains timestamp-consistent. The execution harness forcibly ended calibrated long-running groups after about 32 wall seconds, before robot2 at 0.2x and the subsequent custom live mapping/save/load cycle completed. Those workflows are covered by public-contract/integration tests and the equivalent standard-world live proofs from Slices 04-05. GUI/RViz visual alignment and physical keyboard checks require an interactive display/operator and remain manual verification limitations, not claimed evidence.
+Follow-ups: None in slice scope. `FUP-001` through `FUP-005` remain deferred.
 
 ## Context
 - Repository: `/home/syncrobot/localization` (not initialized as a Git repository at planning time)
