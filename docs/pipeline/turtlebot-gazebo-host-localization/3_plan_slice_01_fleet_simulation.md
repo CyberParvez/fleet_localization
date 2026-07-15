@@ -2,7 +2,7 @@
 
 ## Implementation Status
 Status: implemented
-Commit: `3a7244d`
+Commit: `864a0ad`
 Verification: `colcon build` passed; `colcon test` passed 25/25; `colcon test-result --verbose` reported zero failures; `git diff --check` passed; official TurtleBot3 2.3.7 SDF contract tests passed. An escalated live headless Gazebo run spawned both Burgers and reached `FLEET_READY` with every configured sensor and TF requirement present. Focused tests prove public topic types/QoS/covariance, stamped command forwarding and namespace isolation, atomic readiness aggregation, joint-state bridging, and absence of bridged simulator odometry TF. Cross-exec ROS CLI graph introspection was unavailable in the execution environment, so those narrower automated proofs supplement the successful live readiness run.
 Deviations: A narrow runtime transformation of the official SDF is used; upstream odometry TF is redirected to an intentionally unbridged internal Gazebo topic, so no upstream asset fork is required. `rosdep check` reports a locally missing `ament_pytest` rosdep key even though the package is installed and build/tests pass. No approved behavior deviation.
 Follow-ups: None in slice scope. `FUP-001` through `FUP-005` remain deferred.
