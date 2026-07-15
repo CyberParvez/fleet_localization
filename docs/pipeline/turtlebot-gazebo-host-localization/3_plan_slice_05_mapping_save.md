@@ -1,11 +1,11 @@
 # Slice 05 Plan: Exclusive Mapping And Immutable Map Save
 
 ## Implementation Status
-Status: review-failed
+Status: implemented
 Commit: `bb117d8`
 Verification: Both packages build successfully. `fleet_localization` passes 62/62 tests and the workspace reports 87 tests with zero errors, failures, or skips; `git diff --check` passes. Automated coverage proves exclusive/shared process locking, fresh async-SLAM parameters, lifecycle and mapping-health semantics, mapping-only RViz, session-bound save validation, atomic no-replace publication, collision/failure cleanup, catalogue validation, lock release, and later localization activation. Isolated live runs proved readiness, bonded active SLAM, robot-prefixed OccupancyGrid and TF, mapping health, localization lock rejection, explicit immutable save, duplicate rejection, no staging residue, and subsequent active map-server/AMCL loading of the saved map.
 Deviations: Live operator verification used `rviz:=false`; the dedicated mapping RViz is structurally tested. Gazebo movement was supplied through the existing simulation interface rather than a Slice 06 teleop tool. No approved behavior deviation.
-Follow-ups: None in slice scope. `FUP-001` through `FUP-005` remain deferred.
+Follow-ups: Review fix `483aa5c` canonically validates complete staging before atomic no-replace publication and adds late-collision/error/interruption proof. Public mapping/save/load verification also passes through the hardened adapter in `69fa34e`. `FUP-001` through `FUP-005` remain deferred.
 
 ## Context
 - Repository: `/home/syncrobot/localization` (not initialized as a Git repository at planning time)
