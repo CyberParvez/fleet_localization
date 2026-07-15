@@ -1,11 +1,11 @@
 # Slice 04 Plan: Independent Multi-Robot Localization
 
 ## Implementation Status
-Status: planned
-Commit:
-Verification:
-Deviations:
-Follow-ups:
+Status: implemented
+Commit: `932daaa`
+Verification: Both packages build successfully. `fleet_localization` passes 46/46 tests and the workspace reports 71 tests with zero errors, failures, or skips; `git diff --check` passes. Automated coverage proves two independent launch identities, disjoint topics/prefixed frames, process-private RViz state, independent initialization/health, shared-lock crash/release semantics, and shutdown isolation. In an isolated live Gazebo/ROS run both readiness gates completed and both map-server/AMCL pairs became active; robot1 process-group shutdown removed its services while robot2 stayed active and published `robot2/map`, then robot1 restarted and its lifecycle manager reactivated both managed nodes.
+Deviations: Live verification used `rviz:=false`; dual-RViz behavior is covered structurally because GUI automation is not authoritative in the headless harness. A prerequisite timestamp-ordering defect was repaired narrowly: rejected samples no longer poison ordering state, and a simulation epoch rollback clears timestamp-dependent readiness state. Strict timestamp, frame, covariance, and freshness checks remain in force.
+Follow-ups: None in slice scope. `FUP-001` through `FUP-005` remain deferred.
 
 ## Context
 - Repository: `/home/syncrobot/localization` (not initialized as a Git repository at planning time)
