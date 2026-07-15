@@ -1,0 +1,20 @@
+fleet:
+  map_store: ./maps
+  map_id: turtlebot3_world_v1
+
+simulation:
+  world: turtlebot3_world
+  gui: true
+
+robots:
+  - name: robot1
+    namespace: /robot1
+    frame_prefix: robot1
+    model: burger
+    spawn: {x: -1.0, y: 0.0, z: 0.01, yaw: 0.0}
+  - name: robot2
+    namespace: /robot2
+    frame_prefix: robot2
+    model: burger
+    spawn: {x: 1.0, y: 0.0, z: 0.01, yaw: 3.14159}
+

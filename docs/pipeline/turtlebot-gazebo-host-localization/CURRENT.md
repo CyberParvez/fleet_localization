@@ -13,7 +13,6 @@ Start here for the aligned host-native TurtleBot localization contract.
 - Slice 05 plan: [3_plan_slice_05_mapping_save.md](3_plan_slice_05_mapping_save.md)
 - Slice 06 plan: [3_plan_slice_06_integration_hardening.md](3_plan_slice_06_integration_hardening.md)
 - UX catalogue: [../../about/05_ux_decision_catalogue.md](../../about/05_ux_decision_catalogue.md)
-- Current phase: all six implementation-ready slice plans are written and cross-checked; no slice is implemented.
-- Approval gate: the user must explicitly approve the slice plans before `4_Implement` begins.
-- First implementation source after approval: [3_plan_slice_01_fleet_simulation.md](3_plan_slice_01_fleet_simulation.md).
-- Planning publication: commit and push to `dev` are blocked because this workspace is not a Git repository and has no branch or remote context.
+- Current phase: slice 01 is implemented and verified on `feature/turtlebot-gazebo-host-localization`; slices 02-06 remain planned.
+- Completed slice: [3_plan_slice_01_fleet_simulation.md](3_plan_slice_01_fleet_simulation.md).
+- Next implementation source: [3_plan_slice_02_ekf_readiness.md](3_plan_slice_02_ekf_readiness.md).
