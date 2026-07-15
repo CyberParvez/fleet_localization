@@ -1,11 +1,11 @@
 # Slice 02 Plan: Single-Robot EKF And Readiness
 
 ## Implementation Status
-Status: planned
-Commit:
-Verification:
-Deviations:
-Follow-ups:
+Status: implemented
+Commit: pending slice commit
+Verification: Both ROS packages build; `colcon test` passes 33/33 with zero failures; Python compilation and `git diff --check` pass. An escalated same-shell live Gazebo workflow completed selected-robot readiness, started the robot1 EKF/health processes, emitted finite `/robot1/odometry/filtered` with `robot1/odom` and `robot1/base_footprint`, and resolved the EKF-owned transform with `tf2_echo`. Shutdown regression coverage verifies clean SIGINT/external shutdown handling.
+Deviations: The environment's `rosdep` database reports no definition for installed `ament_python`; builds and tests resolve it successfully. Gazebo occasionally logs simulation-time jump warnings under accelerated headless execution, but the live filtered output and transform remain current and valid. No approved behavior deviation.
+Follow-ups: None in slice scope. `FUP-001` through `FUP-005` remain deferred.
 
 ## Context
 - Repository: `/home/syncrobot/localization` (the workspace is not initialized as a Git repository at planning time)

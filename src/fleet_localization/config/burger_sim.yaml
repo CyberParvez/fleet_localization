@@ -1,0 +1,21 @@
+ekf_filter_node:
+  ros__parameters:
+    use_sim_time: true
+    frequency: 30.0
+    sensor_timeout: 0.2
+    two_d_mode: true
+    publish_tf: true
+    publish_acceleration: false
+    transform_time_offset: 0.0
+    transform_timeout: 0.1
+    odom0: wheel/odometry
+    odom0_config: [false, false, false, false, false, false, true, false, false, false, false, true, false, false, false]
+    odom0_differential: false
+    imu0: imu
+    imu0_config: [false, false, false, false, false, true, false, false, false, false, false, true, false, false, false]
+    imu0_differential: false
+    imu0_remove_gravitational_acceleration: false
+health:
+  freshness_seconds: 1.0
+  degrade_after_seconds: 2.0
+  recover_after_seconds: 2.0
