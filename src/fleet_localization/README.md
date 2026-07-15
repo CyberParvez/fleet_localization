@@ -62,3 +62,19 @@ adds active-world metadata, and atomically publishes the immutable ID. It never
 overwrites an existing ID and shutdown never saves automatically. Stop mapping
 before launching normal localization with the new `map_id`. Autonomous navigation
 is not provided.
+
+## Supported end-to-end workflow
+
+Choose exactly one matched pair in the fleet manifest:
+`turtlebot3_world` / `turtlebot3_world_v1`, or
+`asymmetric_indoor` / `asymmetric_indoor_v1`. Start the one fleet simulator,
+then start this localization launch independently once per robot. Mapping uses
+the same launch with `mode:=mapping` only after every localization process has
+released its shared map-store lock. Use the separate simulation-package teleop
+launch for one selected robot and the explicit `map_save` command for a new ID.
+
+Automated verification is headless. GUI Gazebo, robot-scoped RViz manual pose,
+visual scan/map alignment, and physical keyboard release are manual host checks;
+they do not introduce alternate launch paths. Verification and performance
+claims cover two robots. Physical adapters, automatic initial pose, a shared
+fleet frame, and concurrent mapping remain outside this demo.

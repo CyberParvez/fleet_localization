@@ -10,7 +10,7 @@ import yaml
 
 
 SUPPORTED_MODELS = frozenset({'burger'})
-SUPPORTED_WORLDS = frozenset({'turtlebot3_world'})
+SUPPORTED_WORLDS = frozenset({'turtlebot3_world', 'asymmetric_indoor'})
 _SAFE_ID = re.compile(r'^[A-Za-z0-9][A-Za-z0-9_.-]*$')
 _SAFE_NAME = re.compile(r'^[A-Za-z][A-Za-z0-9_]*$')
 _TOP_KEYS = frozenset({'fleet', 'simulation', 'robots'})
@@ -152,4 +152,3 @@ def load_fleet_config(path: str | Path, *, world: str | None = None,
                 raise FleetConfigError(f'{field}.spawn collides with robot {other.name!r} (minimum separation 0.30 m)')
         robots.append(Robot(name, namespace, prefix, model, spawn))
     return FleetConfig(source, map_store, map_id, selected_world, selected_gui, tuple(robots))
-

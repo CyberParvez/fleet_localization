@@ -17,6 +17,9 @@ setup(
         (os.path.join('share', package_name, 'config'), glob('config/*.yaml')),
         (os.path.join('share', package_name, 'config', 'maps', 'turtlebot3_world_v1'),
          glob('config/maps/turtlebot3_world_v1/*')),
+        (os.path.join('share', package_name, 'config', 'maps', 'asymmetric_indoor_v1'),
+         glob('config/maps/asymmetric_indoor_v1/*')),
+        (os.path.join('share', package_name, 'worlds'), glob('worlds/*.sdf')),
     ],
     install_requires=['setuptools', 'PyYAML'],
     tests_require=['pytest'],
@@ -29,6 +32,7 @@ setup(
         'console_scripts': [
             'fleet_readiness = turtlebot_fleet_sim.fleet_readiness:main',
             'sensor_contract = turtlebot_fleet_sim.sensor_contract:main',
+            'teleop = turtlebot_fleet_sim.teleop:main',
         ],
     },
 )

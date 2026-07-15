@@ -39,11 +39,16 @@ def _launch(context):
     tb3_share = get_package_share_directory('turtlebot3_gazebo')
     description_share = get_package_share_directory('turtlebot3_description')
     ros_gz_share = get_package_share_directory('ros_gz_sim')
-    world_path = os.path.join(tb3_share, 'worlds', f'{config.world}.world')
+    if config.world == 'asymmetric_indoor':
+        package_share = get_package_share_directory('turtlebot_fleet_sim')
+        world_path = os.path.join(package_share, 'worlds', 'asymmetric_indoor.sdf')
+    else:
+        world_path = os.path.join(tb3_share, 'worlds', f'{config.world}.world')
     if not os.path.isfile(world_path):
         raise FleetConfigError(f'world asset is missing: {world_path}')
 
     actions = [
+        AppendEnvironmentVariable('GZ_SIM_RESOURCE_PATH', os.path.dirname(world_path)),
         AppendEnvironmentVariable('GZ_SIM_RESOURCE_PATH', os.path.join(tb3_share, 'models')),
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(os.path.join(ros_gz_share, 'launch', 'gz_sim.launch.py')),

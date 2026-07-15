@@ -1,0 +1,3 @@
+map_id: asymmetric_indoor_v1
+world: asymmetric_indoor
+source: Project asymmetric_indoor.sdf occupancy geometry
