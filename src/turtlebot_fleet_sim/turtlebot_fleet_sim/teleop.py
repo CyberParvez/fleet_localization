@@ -37,18 +37,23 @@ def select_robot(fleet_config: str, robot_name: str):
 class Teleop(Node):
     def __init__(self, robot):
         super().__init__('teleop', namespace=robot.namespace)
-        self.declare_parameter('use_sim_time', True)
+        if not self.has_parameter('use_sim_time'):
+            self.declare_parameter('use_sim_time', True)
         self.publisher = self.create_publisher(TwistStamped, 'cmd_vel', 10)
 
     def publish(self, velocity: Velocity) -> None:
-        message = TwistStamped()
         now = self.get_clock().now()
         if velocity != Velocity() and now.nanoseconds == 0:
             raise RuntimeError('simulation clock is not available; refusing nonzero command')
-        message.header.stamp = now.to_msg()
-        message.twist.linear.x = velocity.linear
-        message.twist.angular.z = velocity.angular
-        self.publisher.publish(message)
+        self.publisher.publish(build_message(velocity, now.to_msg()))
+
+
+def build_message(velocity: Velocity, stamp) -> TwistStamped:
+    message = TwistStamped()
+    message.header.stamp = stamp
+    message.twist.linear.x = velocity.linear
+    message.twist.angular.z = velocity.angular
+    return message
 
 
 def run_keyboard(node: Teleop, stream=sys.stdin, release_timeout: float = 0.12) -> None:

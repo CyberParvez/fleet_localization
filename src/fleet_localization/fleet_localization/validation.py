@@ -6,6 +6,12 @@ def finite(values): return all(math.isfinite(value) for value in values)
 
 def stamp_seconds(stamp): return stamp.sec + stamp.nanosec / 1e9
 
+def publisher_gid(info):
+    """Normalize Jazzy's dict MessageInfo and object-style test/future APIs."""
+    if info is None: return None
+    raw=info.get('publisher_gid') if isinstance(info,dict) else getattr(info,'publisher_gid',None)
+    return bytes(raw) if raw is not None else None
+
 def covariance_valid(values, required):
     return len(values) > max(required) and finite(values) and all(values[index] > 0.0 for index in required)
 
@@ -44,6 +50,28 @@ class MeasurementValidator:
         return None
 
 @dataclass
+class TfAuthorityTracker:
+    """Track dynamic-TF publisher identities per owned edge, never across edges."""
+    owned_edges: set[tuple[str, str]]
+    publishers: dict[tuple[str, str], set[bytes]] = field(default_factory=dict)
+
+    def observe(self, transforms, publisher_gid):
+        # Jazzy's Python MessageInfo omits publisher_gid. Preserve reliable
+        # edge observation for startup; distinct-authority detection activates
+        # automatically on runtimes that expose the GID.
+        gid=bytes(publisher_gid) if publisher_gid is not None else b'publisher-identity-unavailable'
+        for transform in transforms:
+            edge=(transform.header.frame_id,transform.child_frame_id)
+            if edge in self.owned_edges:
+                self.publishers.setdefault(edge,set()).add(gid)
+
+    def observed_edges(self):
+        return set(self.publishers)
+
+    def conflicts(self):
+        return {edge:gids for edge,gids in self.publishers.items() if len(gids) > 1}
+
+@dataclass
 class Persistence:
     degrade_after: float = 2.0
     recover_after: float = 2.0
@@ -63,6 +91,7 @@ class Persistence:
 
 @dataclass
 class Observations:
+    freshness: float = 1.0
     last: dict[str, float] = field(default_factory=dict)
     invalid: dict[str, str] = field(default_factory=dict)
     def clear(self):
@@ -73,7 +102,7 @@ class Observations:
             if key in self.invalid: result.append(f'{key}: {self.invalid[key]}')
             elif key not in self.last: result.append(f'{key}: missing')
             elif self.last[key] <= 0.0 or self.last[key] > now: result.append(f'{key}: invalid timestamp')
-            elif now-self.last[key] > 1.0: result.append(f'{key}: stale')
+            elif now-self.last[key] > self.freshness: result.append(f'{key}: stale')
         return result
 
 @dataclass

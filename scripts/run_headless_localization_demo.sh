@@ -3,10 +3,12 @@ set -euo pipefail
 
 if [[ $# -lt 2 ]]; then echo "usage: $0 ABSOLUTE_FLEET_YAML ROBOT [ROBOT ...]" >&2; exit 2; fi
 manifest=$1; shift
+robots=("$@")
 if [[ $manifest != /* || ! -f $manifest ]]; then echo "invalid absolute manifest: $manifest" >&2; exit 2; fi
 
 run_dir=$(mktemp -d /tmp/fleet-localization-smoke.XXXXXX)
 groups=()
+localization_groups=()
 captures=()
 cleanup() {
   status=$?
@@ -39,6 +41,7 @@ for robot in "$@"; do
     fleet_config:="$manifest" robot:="$robot" rviz:=false \
     >"$run_dir/$robot.log" 2>&1 &
   groups+=("$!")
+  localization_groups+=("$!")
 done
 
 for robot in "$@"; do
@@ -56,11 +59,35 @@ for robot in "$@"; do
   # 0.08 m/s for 5 s exceeds the configured AMCL update_min_d=0.25 m.
   python3 "$(dirname "$0")/publish_motion_pulse.py" --robot "$robot" --seconds 5.0
   wait "$capture"
-  timeout 120 bash -c "until grep -Eq 'localizing|localized' '$run_dir/$robot-health.txt'; do sleep 0.2; done"
+  timeout 120 bash -c "until grep -Eq 'message: (awaiting initial pose|localizing|localized|degraded)' '$run_dir/$robot-health.txt'; do sleep 0.2; done"
   kill "$health_capture" 2>/dev/null || true
   timeout 30 ros2 topic echo --once "/$robot/map" | grep -q "frame_id: $robot/map"
   wait_topic "/$robot/odometry/filtered"
   timeout 30 bash -c "until timeout 3 ros2 run tf2_ros tf2_echo '$robot/odom' '$robot/base_footprint' 2>&1 | grep -q 'Translation:'; do sleep 0.2; done"
 done
+
+if [[ ${#robots[@]} -ge 2 ]]; then
+  stopped_robot=${robots[0]}
+  survivor=${robots[1]}
+  stopped_group=${localization_groups[0]}
+  kill -INT -- "-$stopped_group"
+  timeout 20 bash -c "while kill -0 '$stopped_group' 2>/dev/null; do sleep 0.2; done" || kill -TERM -- "-$stopped_group" 2>/dev/null || true
+  wait "$stopped_group" 2>/dev/null || true
+  timeout 30 bash -c "until ! ros2 lifecycle get '/$stopped_robot/amcl' >/dev/null 2>&1; do sleep 0.2; done"
+  active "/$survivor/map_server"
+  active "/$survivor/amcl"
+  timeout 30 ros2 topic echo --once "/$survivor/map" | grep -q "frame_id: $survivor/map"
+  wait_topic "/$survivor/odometry/filtered"
+  timeout 30 ros2 topic echo --once "/$survivor/localization/health" >/dev/null
+  timeout 30 bash -c "until timeout 3 ros2 run tf2_ros tf2_echo '$survivor/odom' '$survivor/base_footprint' 2>&1 | grep -q 'Translation:'; do sleep 0.2; done"
+  setsid ros2 launch fleet_localization localization.launch.py \
+    fleet_config:="$manifest" robot:="$stopped_robot" rviz:=false \
+    >"$run_dir/$stopped_robot-restart.log" 2>&1 &
+  groups+=("$!")
+  active "/$stopped_robot/map_server"
+  active "/$stopped_robot/amcl"
+  timeout 30 ros2 topic echo --once "/$stopped_robot/map" | grep -q "frame_id: $stopped_robot/map"
+  echo "FAILURE_ISOLATION_READY stopped=$stopped_robot survivor=$survivor restarted=$stopped_robot"
+fi
 
 echo "HEADLESS_LOCALIZATION_READY manifest=$manifest robots=$*"

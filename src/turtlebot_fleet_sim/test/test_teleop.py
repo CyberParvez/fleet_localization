@@ -1,9 +1,13 @@
 import pytest
 import yaml
+from types import SimpleNamespace
 
 from turtlebot_fleet_sim.fleet_config import FleetConfigError
 from turtlebot_fleet_sim import teleop
-from turtlebot_fleet_sim.teleop import KEYS, Velocity, run_keyboard, select_robot
+from turtlebot_fleet_sim.teleop import KEYS, Teleop, Velocity, build_message, run_keyboard, select_robot
+from geometry_msgs.msg import TwistStamped
+from builtin_interfaces.msg import Time
+import rclpy
 
 
 def manifest(tmp_path):
@@ -94,3 +98,33 @@ def test_invalid_selection_precedes_ros_and_publisher_creation(tmp_path, monkeyp
     with pytest.raises(FleetConfigError, match='not present'):
         teleop.main(['--fleet-config', str(manifest(tmp_path)), '--robot', 'missing'])
     assert called == []
+
+
+def test_message_builder_preserves_stamp_motion_and_zero():
+    stamp = Time(sec=12, nanosec=34)
+    motion = build_message(Velocity(0.18, -0.9), stamp)
+    stop = build_message(Velocity(), stamp)
+    assert isinstance(motion, TwistStamped)
+    assert motion.header.stamp is stamp
+    assert (motion.twist.linear.x, motion.twist.angular.z) == (0.18, -0.9)
+    assert (stop.twist.linear.x, stop.twist.angular.z) == (0.0, 0.0)
+
+
+def test_teleop_selected_namespace_topic_type_and_clock_guard(tmp_path, monkeypatch):
+    created=[]; published=[]
+    monkeypatch.setattr(teleop.Node, 'create_publisher',
+        lambda _self,msg_type,topic,qos: created.append((msg_type,topic,qos)) or SimpleNamespace(publish=published.append))
+    monkeypatch.setenv('ROS_LOG_DIR',str(tmp_path/'ros-log'))
+    rclpy.init()
+    node=Teleop(select_robot(str(manifest(tmp_path)),'robot2'))
+    try:
+        assert node.get_namespace() == '/robot2'
+        assert (TwistStamped,'cmd_vel') in [item[0:2] for item in created]
+        zero_now=SimpleNamespace(nanoseconds=0,to_msg=Time)
+        monkeypatch.setattr(node,'get_clock',lambda:SimpleNamespace(now=lambda:zero_now))
+        node.publish(Velocity())
+        assert isinstance(published[-1],TwistStamped)
+        with pytest.raises(RuntimeError,match='simulation clock is not available'):
+            node.publish(Velocity(0.18,0.0))
+    finally:
+        node.destroy_node(); rclpy.shutdown()

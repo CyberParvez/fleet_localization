@@ -11,9 +11,11 @@ from sensor_msgs.msg import Imu, LaserScan
 from tf2_msgs.msg import TFMessage
 from tf2_ros import Buffer, TransformListener
 from .interfaces import resolve_robot
-from .validation import MeasurementValidator, covariance_valid, stamp_seconds
+from .validation import (MeasurementValidator, TfAuthorityTracker, covariance_valid,
+                         publisher_gid, stamp_seconds)
 
 _CLOCK_EPOCH_ROLLBACK_SECONDS = 1.0
+_TF_DISCOVERY_SECONDS = 0.5
 
 class Readiness(Node):
     def __init__(self):
@@ -27,7 +29,10 @@ class Readiness(Node):
         self.valid = {}; self.reasons = {}; self.last_stamp = {}
         self.validator=MeasurementValidator(float(self.get_parameter('freshness').value),
             float(self.get_parameter('future_tolerance').value),float(self.get_parameter('ordering_tolerance').value),self.last_stamp)
-        self.tf_conflict=None
+        self.tf_tracker=TfAuthorityTracker({
+            (self.interface.frame('odom'),self.interface.frame('base_footprint')),
+            (self.interface.frame('map'),self.interface.frame('odom'))})
+        self.tf_discovery_started=None
         reliable=QoSProfile(depth=10,reliability=ReliabilityPolicy.RELIABLE)
         self.create_subscription(Clock, '/clock', self.clock, qos_profile_sensor_data)
         self.create_subscription(Odometry, self.interface.wheel_topic, self.wheel, reliable)
@@ -45,7 +50,7 @@ class Readiness(Node):
             self.valid.clear(); self.reasons.clear()
             if hasattr(self,'validator'): self.validator.reset()
             else: self.last_stamp.clear()
-            self.tf_conflict=None
+            self.tf_discovery_started=None
         self.sim_now=now
     def _common(self,key,msg,frame,values,covariance=None,required=()):
         if not hasattr(self,'validator'):
@@ -69,24 +74,26 @@ class Readiness(Node):
         # Positive infinity is a valid LaserScan "no return" value; NaN is not.
         values=[value for value in m.ranges if not math.isinf(value)]
         self._common('scan',m,self.interface.frame('base_scan'),values)
-    def tf_message(self,msg):
-        forbidden={(self.interface.frame('odom'),self.interface.frame('base_footprint')),
-                   (self.interface.frame('map'),self.interface.frame('odom'))}
-        for transform in msg.transforms:
-            edge=(transform.header.frame_id,transform.child_frame_id)
-            if edge in forbidden:
-                self.tf_conflict=(f'preexisting TF authority for {edge[0]} -> {edge[1]} observed on /tf; '
-                                  'disable the simulator or external estimator broadcaster before localization')
-                self.valid.pop('tf_authority',None); self.reasons['tf_authority']=self.tf_conflict
-                return
+    def tf_message(self,msg,info=None):
+        self.tf_tracker.observe(msg.transforms,publisher_gid(info))
     def check(self):
         if self.sim_now > 0:
             for child in ('base_link','imu_link','base_scan'):
                 try: self.buffer.lookup_transform(self.interface.frame('base_footprint'),self.interface.frame(child),rclpy.time.Time())
                 except Exception as exc: self.reasons['tf']=f'{child}: {type(exc).__name__}'; self.valid.pop('tf',None); break
             else: self.valid['tf']=self.sim_now; self.reasons.pop('tf',None)
-        if getattr(self,'tf_conflict',None) is None: self.valid['tf_authority']=self.sim_now
-        required=('wheel','imu','scan','tf','tf_authority')
+        sources=('wheel','imu','scan','tf')
+        if all(key in self.valid for key in sources) and self.tf_discovery_started is None:
+            self.tf_discovery_started=time.monotonic()
+        observed=self.tf_tracker.observed_edges()
+        if observed:
+            edges=', '.join(f'{parent} -> {child}' for parent,child in sorted(observed))
+            self.valid.pop('tf_authority',None)
+            self.reasons['tf_authority']=(f'preexisting TF authority for {edges} observed on /tf; disable the '
+                'simulator or external estimator broadcaster before localization')
+        elif self.tf_discovery_started is not None and time.monotonic()-self.tf_discovery_started >= _TF_DISCOVERY_SECONDS:
+            self.valid['tf_authority']=self.sim_now; self.reasons.pop('tf_authority',None)
+        required=(*sources,'tf_authority')
         if self.sim_now > 0 and all(k in self.valid and self.sim_now-self.valid[k] <= 1.0 for k in required):
             self.get_logger().info('readiness complete'); self.exit_code=0; rclpy.shutdown(); return
         if time.monotonic()-self.started >= self.timeout:
