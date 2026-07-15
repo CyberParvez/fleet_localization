@@ -3,36 +3,37 @@
 ## Review Scope
 
 - Branch: `feature/turtlebot-gazebo-host-localization`
-- Reviewed implementation commits: `864a0ad`, `f741ef3`, `b1c1f4c`, `932daaa`, `bb117d8`, `97d3df0`
-- Sources: `1_design.md`, `2_alignment.md`, `3_plan.md`, all six implemented slice plans, current code/tests, recorded live evidence, and the full 105-test combined run.
-- Decision: **return to `4_Implement`**. Cleanup is not allowed until the must-fix findings below are corrected and re-reviewed.
+- Original slice commits: `864a0ad`, `f741ef3`, `b1c1f4c`, `932daaa`, `bb117d8`, `97d3df0`
+- Review-fix commits: `7b6bd1b`, `483aa5c`, `69fa34e`, `2a3a389`, `1889814`
+- Sources: `1_design.md`, `2_alignment.md`, `3_plan.md`, all six slice plans, code/tests, public-process harnesses, and recorded live evidence.
+- Final decision: **proceed to `6_Cleanup`**. No must-fix or should-fix finding remains.
 
 ## Verification
 
-- `colcon build --symlink-install --packages-up-to turtlebot_fleet_sim fleet_localization`: passed.
-- `colcon test --packages-select turtlebot_fleet_sim fleet_localization --event-handlers console_direct+`: passed.
-- `colcon test-result --verbose`: 105 tests, zero errors, failures, or skips.
-- `git diff --check`: passed.
-- Three independent read-only passes covered plan/alignment drift, runtime architecture, and test/E2E quality.
+- Both packages build successfully with ROS 2 Jazzy.
+- `colcon test` passes 142/142 tests: 43 simulation and 99 localization, with zero errors, failures, or skips.
+- `git diff --check` and harness shell syntax pass.
+- Independent final runtime and evidence re-reviews found no remaining must-fix item.
+- Public live evidence proves one selected localization, two concurrent independent localizations, robot1 termination with robot2 survival and robot1 restart, active mapping, immutable save, duplicate rejection, clean mapping shutdown, and saved-map localization reload.
 
-## Must Fix Before Cleanup
+## Resolved Findings
 
-1. Readiness and runtime health accept invalid time/covariance state. Pre-clock future samples can satisfy readiness; runtime observations accept zero, future, and out-of-order timestamps, survive clock epoch rollback, and can treat negative covariance as healthy. Add shared strict validation and callback-level regressions without weakening freshness or persistence semantics.
-2. Duplicate authority for `<robot>/odom -> <robot>/base_footprint` and `<robot>/map -> <robot>/odom` is not detected or diagnosed. Add focused startup/runtime observation and controlled injection proof appropriate to the shared `/tf` transport.
-3. Map transaction publication renames staging to the final immutable ID before canonical catalogue validation. A process interruption in that window can expose an invalid final map. Canonically validate complete staging before atomic no-replace publication and add late-collision/error/interruption regressions.
-4. Required public-process integration evidence is too often represented by source inspection or pure state tests. Add executable bounded public launch/process coverage for the critical two-localization, failure isolation, mapping save/load, and custom-world paths; retain structural tests but do not label them as equivalent runtime proof.
+1. Runtime validation now rejects zero/future/stale/out-of-order or malformed selected inputs, validates required frames/covariance/map metadata, resets on simulation-clock epochs, and preserves configured health persistence/freshness.
+2. Readiness observes a bounded TF discovery window and rejects preexisting selected estimator-owned edges. Runtime per-edge multi-publisher tracking is enabled when publisher identity is exposed.
+3. Complete staged maps pass canonical catalogue validation before atomic `RENAME_NOREPLACE` publication. Late collisions, errors, cleanup, and pre-publication interruption are covered.
+4. Public-process harnesses exercise canonical localization and mapping/save/load boundaries with process-group cleanup and disposable map stores. Structural tests remain supplemental rather than being the sole workflow evidence.
+5. The world contract is unambiguous: localization and mapping use the manifest's world/map association; simulator `world:=` is process-local. Collision-free spawn poses are verified in both supported worlds.
+6. Teleop tests drive keyboard behavior and the direct `TwistStamped` publisher boundary, including simulation timestamps, selected namespace/topic, release, quit, interruption, and final zero.
+7. Localization evidence requires post-initialization `localized`; survivor evidence requires a fresh non-degraded state after peer shutdown.
 
-## Should Fix
+## Accepted Limitations And Deferred Scope
 
-1. `world:=...` affects only the simulator process while localization validates map provenance against the manifest world. Make the supported operator contract unambiguous and test the effective world/map selection end to end.
-2. Teleop interruption/release tests inspect source instead of driving the input/publisher boundary. Add deterministic behavioral proof for pulse, release, quit, EOF/interruption, and final zero.
-
-## Follow-Up And Accepted Limitations
-
-- `FUP-001` through `FUP-005` remain deferred and were not accidentally implemented.
-- GUI/RViz visual alignment and physical keyboard checks remain manual-only environment limitations; headless behavior still requires executable coverage.
-- No Docker, navigation, fleet-level localization launcher, shared global map frame, physical robot adapter, or collaborative mapping scope was introduced.
+- Jazzy `rclpy` callback metadata does not expose publisher GIDs. Startup rejects preexisting duplicate owned TF edges, but a duplicate introduced only after readiness cannot be attributed reliably at runtime. The README requires restarting localization after TF-publisher changes; runtimes exposing publisher identity use the runtime tracker.
+- The latest tightened live-harness rerun was blocked before localization by an intermittent missing Gazebo `/clock`. It is not claimed as a pass. Prior successful public-process runs and the 142-test combined proof provide the accepted evidence; retained logs show the later failure occurred at simulator startup.
+- GUI/RViz visual scan alignment and physical-keyboard checks remain manual, display/operator-dependent verification.
+- `FUP-001` through `FUP-005` remain deferred: performance beyond two robots, real non-TurtleBot profiles, automatic initial pose, a shared global frame, and collaborative mapping.
+- No Docker, autonomous navigation, fleet-level localization launcher, physical adapter, shared global map frame, or collaborative mapping was introduced.
 
 ## Review Routing
 
-Return to `4_Implement` with focused fixes, rerun combined verification, then replace this decision with a fresh `5_Review` pass. Relevant slice records are review-failed until the findings are resolved.
+The implementation/review loop is complete. Proceed to `6_Cleanup`; do not reopen implementation unless cleanup discovers a new behavioral defect.
