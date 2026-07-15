@@ -14,6 +14,12 @@ class RobotInterface:
     @property
     def filtered_topic(self): return f'{self.namespace}/odometry/filtered'
     @property
+    def map_topic(self): return f'{self.namespace}/map'
+    @property
+    def initialpose_topic(self): return f'{self.namespace}/initialpose'
+    @property
+    def amcl_pose_topic(self): return f'{self.namespace}/amcl_pose'
+    @property
     def health_topic(self): return f'{self.namespace}/localization/health'
     def frame(self, suffix): return f'{self.prefix}/{suffix}'
 

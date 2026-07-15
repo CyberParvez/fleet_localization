@@ -6,4 +6,6 @@ def test_launch_declares_aligned_interface_and_gate():
     for argument in ('fleet_config','robot','mode','map_id','rviz','timeout'): assert f"DeclareLaunchArgument('{argument}'" in text
     assert 'OnProcessExit' in text and "package='robot_localization'" in text
     assert text.index("executable='readiness'") < text.index("executable='ekf_node'")
-    assert 'amcl' not in text.lower() and 'slam_toolbox' not in text.lower()
+    assert "package='nav2_map_server'" in text and "package='nav2_amcl'" in text
+    assert "'node_names':['map_server','amcl']" in text and "'autostart':True" in text
+    assert 'slam_toolbox' not in text.lower()

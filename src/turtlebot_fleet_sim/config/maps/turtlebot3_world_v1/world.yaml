@@ -1,0 +1,3 @@
+map_id: turtlebot3_world_v1
+world: turtlebot3_world
+source: Official turtlebot3_navigation2 occupancy map for TurtleBot3 World
