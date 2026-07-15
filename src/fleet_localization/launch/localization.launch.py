@@ -46,6 +46,7 @@ def setup(context):
           else MapStoreLock.acquire_exclusive(manifest.map_store))
     share=Path(get_package_share_directory('fleet_localization'))
     profile=yaml.safe_load((share/'config'/'burger_sim.yaml').read_text())
+    health_tuning=profile['health']
     ekf_parameters=dict(profile['ekf_filter_node']['ros__parameters'])
     ekf_parameters.update({
         'use_sim_time':True,'odom_frame':interface.frame('odom'),'world_frame':interface.frame('odom'),
@@ -58,7 +59,10 @@ def setup(context):
     rviz_path=render_rviz(share/'rviz'/rviz_template,robot,interface.namespace,interface.prefix) if use_rviz else None
 
     ready=Node(package='fleet_localization',executable='readiness',name='readiness',namespace=interface.namespace,
-        parameters=[{'fleet_config':config,'robot':robot,'timeout':timeout,'use_sim_time':True}],output='screen')
+        parameters=[{'fleet_config':config,'robot':robot,'timeout':timeout,'use_sim_time':True,
+            'freshness':float(health_tuning['freshness_seconds']),
+            'future_tolerance':float(health_tuning['future_tolerance_seconds']),
+            'ordering_tolerance':float(health_tuning['ordering_tolerance_seconds'])}],output='screen')
     ekf=Node(package='robot_localization',executable='ekf_node',name='ekf_filter_node',namespace=interface.namespace,
         parameters=[ekf_parameters],remappings=[('odometry/filtered','odometry/filtered')],output='screen')
     map_server=Node(package='nav2_map_server',executable='map_server',name='map_server',namespace=interface.namespace,

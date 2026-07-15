@@ -1,4 +1,5 @@
 """Robot-scoped localization diagnostic publisher."""
+import math
 import rclpy
 from diagnostic_msgs.msg import DiagnosticArray, DiagnosticStatus, KeyValue
 from geometry_msgs.msg import PoseWithCovarianceStamped
@@ -15,7 +16,11 @@ from ament_index_python.packages import get_package_share_directory
 from pathlib import Path
 
 from .interfaces import resolve_robot
-from .validation import LocalizationHealthState, MappingHealthState, Observations, Persistence, finite, stamp_seconds
+from .validation import (LocalizationHealthState, MappingHealthState, MeasurementValidator,
+                         Observations, Persistence, covariance_nonnegative, covariance_valid,
+                         stamp_seconds)
+
+_CLOCK_EPOCH_ROLLBACK_SECONDS = 1.0
 
 
 class Health(Node):
@@ -29,6 +34,8 @@ class Health(Node):
         profile=Path(get_package_share_directory('fleet_localization'))/'config'/'burger_sim.yaml'
         tuning=yaml.safe_load(profile.read_text())['health']
         self.obs=Observations()
+        self.validator=MeasurementValidator(float(tuning['freshness_seconds']),
+            float(tuning['future_tolerance_seconds']),float(tuning['ordering_tolerance_seconds']))
         self.state=LocalizationHealthState(
             freshness=float(tuning['freshness_seconds']),
             position_covariance_max=float(tuning['position_covariance_max']),
@@ -42,7 +49,7 @@ class Health(Node):
         reliable=QoSProfile(depth=10,reliability=ReliabilityPolicy.RELIABLE)
         transient=QoSProfile(depth=1,reliability=ReliabilityPolicy.RELIABLE,durability=DurabilityPolicy.TRANSIENT_LOCAL)
         from rosgraph_msgs.msg import Clock
-        self.create_subscription(Clock,'/clock',lambda m:setattr(self,'sim_now',stamp_seconds(m.clock)),qos_profile_sensor_data)
+        self.create_subscription(Clock,'/clock',self.clock,qos_profile_sensor_data)
         self.create_subscription(Odometry,self.interface.wheel_topic,lambda m:self.seen('wheel',m),reliable)
         self.create_subscription(Imu,self.interface.imu_topic,lambda m:self.seen('imu',m),qos_profile_sensor_data)
         self.create_subscription(LaserScan,self.interface.scan_topic,lambda m:self.seen('scan',m),qos_profile_sensor_data)
@@ -57,18 +64,61 @@ class Health(Node):
         self.pub=self.create_publisher(DiagnosticArray,self.interface.health_topic,reliable)
         self.buffer=Buffer(); self.listener=TransformListener(self.buffer,self)
         self.create_timer(0.2,self.publish)
-    def seen(self,key,msg): self.obs.last[key]=stamp_seconds(msg.header.stamp); self.obs.invalid.pop(key,None)
+    def clock(self,msg):
+        now=stamp_seconds(msg.clock)
+        if self.sim_now > 0.0 and now + _CLOCK_EPOCH_ROLLBACK_SECONDS < self.sim_now:
+            self.obs.clear(); self.validator.reset(); self.map_seen=False; self.map_at=None
+            self.state.reset_epoch()
+        self.sim_now=now
+    def _observe(self,key,msg,expected_frame,values,covariance=None,required=(),
+                 expected_child=None):
+        stamp=stamp_seconds(msg.header.stamp)
+        reason=self.validator.validate(key,stamp,self.sim_now,frame=msg.header.frame_id,
+            expected_frame=expected_frame,child_frame=getattr(msg,'child_frame_id',None),
+            expected_child_frame=expected_child,values=values,covariance=covariance,
+            required_covariance=required)
+        if reason:
+            self.obs.last.pop(key,None); self.obs.invalid[key]=reason
+            return False
+        self.obs.last[key]=stamp; self.obs.invalid.pop(key,None)
+        return True
+    def seen(self,key,msg):
+        if key == 'wheel':
+            self._observe(key,msg,self.interface.frame('odom'),
+                [msg.twist.twist.linear.x,msg.twist.twist.angular.z],msg.twist.covariance,(0,35),
+                self.interface.frame('base_footprint'))
+        elif key == 'imu':
+            if self._observe(key,msg,self.interface.frame('imu_link'),
+                [msg.orientation.x,msg.orientation.y,msg.orientation.z,msg.orientation.w,msg.angular_velocity.z],
+                msg.orientation_covariance,(8,)) and not covariance_valid(msg.angular_velocity_covariance,(8,)):
+                self.obs.last.pop(key,None); self.obs.invalid[key]='invalid angular velocity covariance'
+        else:
+            values=[value for value in msg.ranges if not math.isinf(value)]
+            self._observe(key,msg,self.interface.frame('base_scan'),values)
     def filtered(self,msg):
         values=[msg.pose.pose.position.x,msg.pose.pose.position.y,msg.twist.twist.linear.x,msg.twist.twist.angular.z,*msg.pose.covariance,*msg.twist.covariance]
-        if finite(values): self.obs.last['ekf']=stamp_seconds(msg.header.stamp); self.obs.invalid.pop('ekf',None)
-        else: self.obs.invalid['ekf']='non-finite output'
+        self._observe('ekf',msg,self.interface.frame('odom'),values,msg.pose.covariance,(0,7,35),
+            self.interface.frame('base_footprint'))
+        if 'ekf' in self.obs.last and not covariance_valid(msg.twist.covariance,(0,35)):
+            self.obs.last.pop('ekf',None); self.obs.invalid['ekf']='invalid twist covariance'
     def initialized(self,msg):
         stamp=stamp_seconds(msg.header.stamp) or self.sim_now
-        if msg.header.frame_id == self.interface.frame('map'): self.state.initialized(stamp)
+        reason=self.validator.validate('initialpose',stamp,self.sim_now,frame=msg.header.frame_id,
+            expected_frame=self.interface.frame('map'),values=[msg.pose.pose.position.x,msg.pose.pose.position.y,
+                msg.pose.pose.orientation.x,msg.pose.pose.orientation.y,msg.pose.pose.orientation.z,msg.pose.pose.orientation.w],
+            covariance=msg.pose.covariance,required_covariance=(0,7,35))
+        if reason: self.obs.invalid['initialpose']=reason
+        else: self.obs.invalid.pop('initialpose',None); self.state.initialized(stamp)
     def amcl_pose(self,msg):
         values=[msg.pose.pose.position.x,msg.pose.pose.position.y,msg.pose.pose.orientation.z,msg.pose.pose.orientation.w,*msg.pose.covariance]
-        if msg.header.frame_id == self.interface.frame('map') and finite(values):
-            self.state.estimate(stamp_seconds(msg.header.stamp),msg.pose.covariance)
+        stamp=stamp_seconds(msg.header.stamp)
+        reason=self.validator.validate('amcl',stamp,self.sim_now,frame=msg.header.frame_id,
+            expected_frame=self.interface.frame('map'),values=values)
+        if reason is None and not covariance_nonnegative(msg.pose.covariance,(0,7,35)):
+            reason='invalid covariance'
+        if reason: self.obs.invalid['amcl']=reason
+        else:
+            self.obs.invalid.pop('amcl',None); self.state.estimate(stamp,msg.pose.covariance)
     def transition(self,node,msg): self.lifecycle[node]=msg.goal_state.label.lower() == 'active'
     def poll_lifecycle(self):
         for name,client in self.lifecycle_clients.items():
@@ -94,6 +144,8 @@ class Health(Node):
             tf_current=0.0 <= self.sim_now-transform_time <= self.state.freshness
         except Exception: pass
         problems=self.obs.problems(self.sim_now,('wheel','imu','scan','ekf'))
+        problems.extend(f'{key}: {reason}' for key,reason in self.obs.invalid.items()
+                        if key in ('initialpose','amcl'))
         if self.mode == 'mapping':
             state,problems=self.state.evaluate(self.sim_now,problems,all(self.lifecycle.values()),self.map_at,tf_current)
         else:

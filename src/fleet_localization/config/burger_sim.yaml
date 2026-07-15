@@ -17,6 +17,8 @@ ekf_filter_node:
     imu0_remove_gravitational_acceleration: false
 health:
   freshness_seconds: 1.0
+  future_tolerance_seconds: 0.1
+  ordering_tolerance_seconds: 0.001
   degrade_after_seconds: 2.0
   recover_after_seconds: 2.0
   position_covariance_max: 0.25

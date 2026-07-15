@@ -8,25 +8,32 @@ from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data, QoSProfile, ReliabilityPolicy
 from rosgraph_msgs.msg import Clock
 from sensor_msgs.msg import Imu, LaserScan
+from tf2_msgs.msg import TFMessage
 from tf2_ros import Buffer, TransformListener
 from .interfaces import resolve_robot
-from .validation import covariance_valid, finite, stamp_seconds
+from .validation import MeasurementValidator, covariance_valid, stamp_seconds
 
 _CLOCK_EPOCH_ROLLBACK_SECONDS = 1.0
 
 class Readiness(Node):
     def __init__(self):
         super().__init__('readiness')
-        for name, default in [('fleet_config',''), ('robot',''), ('timeout',60.0)]: self.declare_parameter(name, default)
+        for name, default in [('fleet_config',''), ('robot',''), ('timeout',60.0),
+                              ('freshness',1.0),('future_tolerance',0.1),('ordering_tolerance',0.001)]:
+            self.declare_parameter(name, default)
         self.interface = resolve_robot(self.get_parameter('fleet_config').value, self.get_parameter('robot').value)
         self.timeout = float(self.get_parameter('timeout').value)
         self.started = time.monotonic(); self.sim_now = 0.0
         self.valid = {}; self.reasons = {}; self.last_stamp = {}
+        self.validator=MeasurementValidator(float(self.get_parameter('freshness').value),
+            float(self.get_parameter('future_tolerance').value),float(self.get_parameter('ordering_tolerance').value),self.last_stamp)
+        self.tf_conflict=None
         reliable=QoSProfile(depth=10,reliability=ReliabilityPolicy.RELIABLE)
         self.create_subscription(Clock, '/clock', self.clock, qos_profile_sensor_data)
         self.create_subscription(Odometry, self.interface.wheel_topic, self.wheel, reliable)
         self.create_subscription(Imu, self.interface.imu_topic, self.imu, qos_profile_sensor_data)
         self.create_subscription(LaserScan, self.interface.scan_topic, self.scan, qos_profile_sensor_data)
+        self.create_subscription(TFMessage, '/tf', self.tf_message, reliable)
         self.buffer=Buffer(); self.listener=TransformListener(self.buffer,self)
         self.timer=self.create_timer(0.1,self.check)
         self.exit_code=None
@@ -35,16 +42,17 @@ class Readiness(Node):
         if self.sim_now > 0.0 and now + _CLOCK_EPOCH_ROLLBACK_SECONDS < self.sim_now:
             # Gazebo may restart its simulation epoch. Measurements accepted in
             # the prior epoch must not poison ordering or freshness in the new one.
-            self.valid.clear(); self.reasons.clear(); self.last_stamp.clear()
+            self.valid.clear(); self.reasons.clear()
+            if hasattr(self,'validator'): self.validator.reset()
+            else: self.last_stamp.clear()
+            self.tf_conflict=None
         self.sim_now=now
     def _common(self,key,msg,frame,values,covariance=None,required=()):
-        stamp=stamp_seconds(msg.header.stamp); reason=None
-        if msg.header.frame_id != frame: reason=f'frame {msg.header.frame_id!r}, expected {frame!r}'
-        elif stamp <= 0: reason='zero timestamp'
-        elif self.sim_now and stamp > self.sim_now+0.1: reason='future timestamp'
-        elif key in self.last_stamp and stamp+0.001 < self.last_stamp[key]: reason='out-of-order timestamp'
-        elif not finite(values): reason='non-finite measurement'
-        elif covariance is not None and not covariance_valid(covariance,required): reason='invalid covariance'
+        if not hasattr(self,'validator'):
+            self.validator=MeasurementValidator(1.0,0.1,0.001,self.last_stamp)
+        stamp=stamp_seconds(msg.header.stamp)
+        reason=self.validator.validate(key,stamp,self.sim_now,frame=msg.header.frame_id,
+            expected_frame=frame,values=values,covariance=covariance,required_covariance=required)
         if reason: self.valid.pop(key,None); self.reasons[key]=reason
         else:
             self.last_stamp[key]=stamp
@@ -52,7 +60,7 @@ class Readiness(Node):
     def wheel(self,m):
         self._common('wheel',m,self.interface.frame('odom'),[m.twist.twist.linear.x,m.twist.twist.angular.z],m.twist.covariance,(0,35))
         if m.child_frame_id != self.interface.frame('base_footprint'):
-            self.valid.pop('wheel',None); self.reasons['wheel']=f'child frame {m.child_frame_id!r}'
+            self.valid.pop('wheel',None); self.reasons['wheel']=f'child frame {m.child_frame_id!r}, expected {self.interface.frame("base_footprint")!r}'
     def imu(self,m):
         self._common('imu',m,self.interface.frame('imu_link'),[m.orientation.x,m.orientation.y,m.orientation.z,m.orientation.w,m.angular_velocity.z],m.orientation_covariance,(8,))
         if not covariance_valid(m.angular_velocity_covariance,(8,)):
@@ -61,13 +69,24 @@ class Readiness(Node):
         # Positive infinity is a valid LaserScan "no return" value; NaN is not.
         values=[value for value in m.ranges if not math.isinf(value)]
         self._common('scan',m,self.interface.frame('base_scan'),values)
+    def tf_message(self,msg):
+        forbidden={(self.interface.frame('odom'),self.interface.frame('base_footprint')),
+                   (self.interface.frame('map'),self.interface.frame('odom'))}
+        for transform in msg.transforms:
+            edge=(transform.header.frame_id,transform.child_frame_id)
+            if edge in forbidden:
+                self.tf_conflict=(f'preexisting TF authority for {edge[0]} -> {edge[1]} observed on /tf; '
+                                  'disable the simulator or external estimator broadcaster before localization')
+                self.valid.pop('tf_authority',None); self.reasons['tf_authority']=self.tf_conflict
+                return
     def check(self):
         if self.sim_now > 0:
             for child in ('base_link','imu_link','base_scan'):
                 try: self.buffer.lookup_transform(self.interface.frame('base_footprint'),self.interface.frame(child),rclpy.time.Time())
                 except Exception as exc: self.reasons['tf']=f'{child}: {type(exc).__name__}'; self.valid.pop('tf',None); break
             else: self.valid['tf']=self.sim_now; self.reasons.pop('tf',None)
-        required=('wheel','imu','scan','tf')
+        if getattr(self,'tf_conflict',None) is None: self.valid['tf_authority']=self.sim_now
+        required=('wheel','imu','scan','tf','tf_authority')
         if self.sim_now > 0 and all(k in self.valid and self.sim_now-self.valid[k] <= 1.0 for k in required):
             self.get_logger().info('readiness complete'); self.exit_code=0; rclpy.shutdown(); return
         if time.monotonic()-self.started >= self.timeout:
