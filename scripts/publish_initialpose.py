@@ -37,8 +37,8 @@ message.pose.pose.position.x = robot.spawn.x
 message.pose.pose.position.y = robot.spawn.y
 message.pose.pose.orientation.z = sin(robot.spawn.yaw / 2.0)
 message.pose.pose.orientation.w = cos(robot.spawn.yaw / 2.0)
-message.pose.covariance[0] = message.pose.covariance[7] = 0.25
-message.pose.covariance[35] = 0.068
+message.pose.covariance[0] = message.pose.covariance[7] = 0.05
+message.pose.covariance[35] = 0.02
 publish_until = time.monotonic() + 2.0
 while time.monotonic() < publish_until:
     message.header.stamp = (node.get_clock().now() - Duration(seconds=0.2)).to_msg()

@@ -38,6 +38,14 @@ Health is published on `/<robot>/localization/health`. It reports `awaiting init
 pose`, `localizing`, `localized`, or `degraded`; an active process alone is not
 treated as successful localization.
 
+At startup, readiness observes the shared `/tf` transport for a bounded window
+and rejects any preexisting publisher of this robot's owned `odom ->
+base_footprint` or `map -> odom` edge. ROS 2 Jazzy's Python `MessageInfo` does not
+expose a publisher GID, so a duplicate broadcaster introduced only after
+readiness cannot be attributed reliably at runtime. After changing any TF
+publisher, restart the affected localization invocation so the startup ownership
+check runs again.
+
 Mapping is an explicit, exclusive session. Stop every localization invocation,
 then run the same one-robot launcher in fresh asynchronous mapping mode:
 

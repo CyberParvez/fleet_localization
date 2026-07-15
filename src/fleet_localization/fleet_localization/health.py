@@ -115,7 +115,7 @@ class Health(Node):
         if 'ekf' in self.obs.last and not covariance_valid(msg.twist.covariance,(0,35)):
             self.obs.last.pop('ekf',None); self.obs.invalid['ekf']='invalid twist covariance'
     def initialized(self,msg):
-        stamp=stamp_seconds(msg.header.stamp) or self.sim_now
+        stamp=stamp_seconds(msg.header.stamp)
         reason=self.validator.validate('initialpose',stamp,self.sim_now,frame=msg.header.frame_id,
             expected_frame=self.interface.frame('map'),values=[msg.pose.pose.position.x,msg.pose.pose.position.y,
                 msg.pose.pose.orientation.x,msg.pose.pose.orientation.y,msg.pose.pose.orientation.z,msg.pose.pose.orientation.w],

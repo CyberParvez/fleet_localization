@@ -59,7 +59,8 @@ for robot in "$@"; do
   # 0.08 m/s for 5 s exceeds the configured AMCL update_min_d=0.25 m.
   python3 "$(dirname "$0")/publish_motion_pulse.py" --robot "$robot" --seconds 5.0
   wait "$capture"
-  timeout 120 bash -c "until grep -Eq 'message: (awaiting initial pose|localizing|localized|degraded)' '$run_dir/$robot-health.txt'; do sleep 0.2; done"
+  health_marker=$(wc -c <"$run_dir/$robot-health.txt")
+  timeout 120 bash -c "until tail -c +$((health_marker + 1)) '$run_dir/$robot-health.txt' | grep -q 'message: localized'; do sleep 0.2; done"
   kill "$health_capture" 2>/dev/null || true
   timeout 30 ros2 topic echo --once "/$robot/map" | grep -q "frame_id: $robot/map"
   wait_topic "/$robot/odometry/filtered"
@@ -78,7 +79,13 @@ if [[ ${#robots[@]} -ge 2 ]]; then
   active "/$survivor/amcl"
   timeout 30 ros2 topic echo --once "/$survivor/map" | grep -q "frame_id: $survivor/map"
   wait_topic "/$survivor/odometry/filtered"
-  timeout 30 ros2 topic echo --once "/$survivor/localization/health" >/dev/null
+  timeout 30 ros2 topic echo "/$survivor/localization/health" >"$run_dir/$survivor-survivor-health.txt" &
+  survivor_health=$!
+  captures+=("$survivor_health")
+  timeout 15 bash -c "until ros2 topic info '/$survivor/localization/health' 2>/dev/null | grep -Eq 'Subscription count: [1-9]'; do sleep 0.2; done"
+  survivor_marker=$(wc -c <"$run_dir/$survivor-survivor-health.txt")
+  timeout 30 bash -c "until tail -c +$((survivor_marker + 1)) '$run_dir/$survivor-survivor-health.txt' | grep -Eq 'message: (localizing|localized)'; do sleep 0.2; done"
+  kill "$survivor_health" 2>/dev/null || true
   timeout 30 bash -c "until timeout 3 ros2 run tf2_ros tf2_echo '$survivor/odom' '$survivor/base_footprint' 2>&1 | grep -q 'Translation:'; do sleep 0.2; done"
   setsid ros2 launch fleet_localization localization.launch.py \
     fleet_config:="$manifest" robot:="$stopped_robot" rviz:=false \

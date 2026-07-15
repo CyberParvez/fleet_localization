@@ -63,6 +63,17 @@ def test_negative_amcl_required_variance_is_never_localized():
     assert node.state.amcl_at is None and node.obs.invalid['amcl']=='invalid covariance'
 
 
+def test_zero_stamped_initial_pose_is_rejected_without_initializing_state():
+    node=health()
+    covariance=[0.0]*36; covariance[0]=covariance[7]=covariance[35]=0.1
+    pose=SimpleNamespace(pose=SimpleNamespace(position=SimpleNamespace(x=0.0,y=0.0),
+        orientation=SimpleNamespace(x=0.0,y=0.0,z=0.0,w=1.0)),covariance=covariance)
+    message=SimpleNamespace(header=SimpleNamespace(stamp=stamp(0.0),frame_id='robot1/map'),pose=pose)
+    node.initialized(message)
+    assert node.state.initialized_at is None
+    assert node.obs.invalid['initialpose']=='zero timestamp'
+
+
 def test_preexisting_selected_tf_edges_block_readiness_with_actionable_reason(monkeypatch):
     node=Readiness.__new__(Readiness); node.interface=Interface(); node.valid={}; node.reasons={}
     node.tf_tracker=TfAuthorityTracker({('robot1/odom','robot1/base_footprint'),('robot1/map','robot1/odom')})
