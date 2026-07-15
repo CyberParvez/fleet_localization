@@ -1,11 +1,11 @@
 # Slice 03 Plan: Single-Robot AMCL And Operator Session
 
 ## Implementation Status
-Status: planned
-Commit:
-Verification:
-Deviations:
-Follow-ups:
+Status: implemented
+Commit: `b1c1f4c`
+Verification: Both packages build successfully. `fleet_localization` passes 29/29 tests and the workspace reports 54 tests with zero errors, failures, or skips; `git diff --check` passes. Automated integration coverage proves readiness failure isolation, immutable-map fingerprint recheck before activation, exact selected-robot Nav2 lifecycle scope, robot-prefixed AMCL parameters/interfaces, and optional RViz. A live Gazebo run reached `FLEET_READY`, activated robot1 map server and AMCL, published a reliable/transient-local `robot1/map`, reported `awaiting initial pose`, accepted `/robot1/initialpose`, and emitted a finite `/robot1/amcl_pose`.
+Deviations: GUI behavior is structurally tested and the live verification used the authoritative `rviz:=false` headless path. An additional accelerated headless run encountered the known Gazebo backward-time warnings; the earlier lifecycle, map, parameter, initialization, and AMCL-pose evidence remained valid. No approved behavior deviation.
+Follow-ups: None in slice scope. `FUP-001` through `FUP-005` remain deferred.
 
 ## Context
 - Repository: `/home/syncrobot/localization` (not initialized as a Git repository at planning time)

@@ -13,6 +13,6 @@ Start here for the aligned host-native TurtleBot localization contract.
 - Slice 05 plan: [3_plan_slice_05_mapping_save.md](3_plan_slice_05_mapping_save.md)
 - Slice 06 plan: [3_plan_slice_06_integration_hardening.md](3_plan_slice_06_integration_hardening.md)
 - UX catalogue: [../../about/05_ux_decision_catalogue.md](../../about/05_ux_decision_catalogue.md)
-- Current phase: slices 01-02 are implemented and verified on `feature/turtlebot-gazebo-host-localization`; slices 03-06 remain planned.
-- Most recently completed slice: [3_plan_slice_02_ekf_readiness.md](3_plan_slice_02_ekf_readiness.md).
-- Next implementation source: [3_plan_slice_03_amcl_operator.md](3_plan_slice_03_amcl_operator.md).
+- Current phase: slices 01-03 are implemented and verified on `feature/turtlebot-gazebo-host-localization`; slices 04-06 remain planned.
+- Most recently completed slice: [3_plan_slice_03_amcl_operator.md](3_plan_slice_03_amcl_operator.md).
+- Next implementation source: [3_plan_slice_04_multi_robot_localization.md](3_plan_slice_04_multi_robot_localization.md).
