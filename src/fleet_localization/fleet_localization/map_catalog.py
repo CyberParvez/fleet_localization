@@ -1,6 +1,7 @@
 """Strict resolution of immutable occupancy maps from the manifest map store."""
 from dataclasses import dataclass
 from pathlib import Path
+import math
 import re
 
 import yaml
@@ -62,14 +63,17 @@ def _inside(path: Path, root: Path, label: str) -> Path:
     return resolved
 
 
-def resolve_map(fleet_config: str | Path, map_id: str = '') -> ResolvedMap:
-    config = load_fleet_config(fleet_config)
-    selected = map_id or config.map_id
-    validate_map_id(selected)
+def validate_map_directory(config, map_id: str, directory: str | Path) -> ResolvedMap:
+    """Validate a complete map directory using the canonical catalogue contract.
+
+    ``directory`` may be a private same-store staging directory.  The logical
+    ``map_id`` remains the ID written into metadata and eventually published.
+    """
+    selected = validate_map_id(map_id)
     store = config.map_store.resolve()
     if not store.is_dir():
         raise MapCatalogError(f'map_store does not exist: {store}')
-    directory = store / selected
+    directory = Path(directory)
     if directory.is_symlink():
         raise MapCatalogError(f'map {selected!r} directory must not be a symlink')
     try:
@@ -102,10 +106,17 @@ def resolve_map(fleet_config: str | Path, map_id: str = '') -> ResolvedMap:
         free = float(occupancy['free_thresh'])
     except (TypeError, ValueError) as exc:
         raise MapCatalogError(f'map {selected!r} occupancy values must be numeric') from exc
-    if resolution <= 0.0 or not isinstance(origin, list) or len(origin) != 3 or not all(isinstance(v, (int, float)) for v in origin):
+    if (not math.isfinite(resolution) or resolution <= 0.0 or
+            not isinstance(origin, list) or len(origin) != 3 or
+            not all(isinstance(v, (int, float)) and not isinstance(v, bool) and
+                    math.isfinite(float(v)) for v in origin)):
         raise MapCatalogError(f'map {selected!r} has invalid resolution or origin')
-    if not 0.0 <= free < occupied <= 1.0 or occupancy['negate'] not in (0, 1):
+    if (not math.isfinite(free) or not math.isfinite(occupied) or
+            not 0.0 <= free < occupied <= 1.0 or
+            type(occupancy['negate']) is not int or occupancy['negate'] not in (0, 1)):
         raise MapCatalogError(f'map {selected!r} has invalid occupancy thresholds or negate')
+    if 'mode' in occupancy and occupancy['mode'] not in ('trinary', 'scale', 'raw'):
+        raise MapCatalogError(f'map {selected!r} has invalid occupancy mode')
     image_path = directory / image
     if not image_path.is_file():
         raise MapCatalogError(f'map {selected!r} image does not exist: {image}')
@@ -125,3 +136,10 @@ def resolve_map(fleet_config: str | Path, map_id: str = '') -> ResolvedMap:
     files = (yaml_path, image_path, metadata_path)
     fingerprints = tuple((path, path.stat().st_size, path.stat().st_mtime_ns) for path in files)
     return ResolvedMap(selected, directory, yaml_path, image_path, metadata_path, config.world, fingerprints)
+
+
+def resolve_map(fleet_config: str | Path, map_id: str = '') -> ResolvedMap:
+    config = load_fleet_config(fleet_config)
+    selected = map_id or config.map_id
+    validate_map_id(selected)
+    return validate_map_directory(config, selected, config.map_store.resolve() / selected)
