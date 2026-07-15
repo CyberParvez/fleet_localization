@@ -8,4 +8,5 @@ def test_launch_declares_aligned_interface_and_gate():
     assert text.index("executable='readiness'") < text.index("executable='ekf_node'")
     assert "package='nav2_map_server'" in text and "package='nav2_amcl'" in text
     assert "'node_names':['map_server','amcl']" in text and "'autostart':True" in text
-    assert 'slam_toolbox' not in text.lower()
+    assert "mode not in ('localization','mapping')" in text
+    assert "executable='async_slam_toolbox_node'" in text

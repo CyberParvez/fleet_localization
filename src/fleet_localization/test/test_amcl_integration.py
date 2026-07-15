@@ -30,7 +30,7 @@ def test_non_gui_selected_robot_graph_is_readiness_gated_and_robot_scoped():
     gate=text[text.index('def readiness_exited'):text.index('def localization_exited')]
     assert 'activation_after_readiness(event.returncode,selected_map,nodes)' in gate
     assert 'if activated is not None: return activated' in gate
-    assert "nodes=[ekf,map_server,amcl,lifecycle,health]" in gate
+    assert "[ekf,map_server,amcl,lifecycle,health] if mode == 'localization'" in gate
     assert "if rviz is not None: nodes.append(rviz)" in gate
     assert "namespace=interface.namespace" in text
     assert "'node_names':['map_server','amcl']" in text

@@ -19,6 +19,15 @@ def test_multiple_shared_holders_and_exclusive_conflict(tmp_path):
     exclusive=MapStoreLock.acquire_exclusive(tmp_path); exclusive.release()
 
 
+def test_exclusive_holder_rejects_readers_and_writers_on_same_inode(tmp_path):
+    exclusive=MapStoreLock.acquire_exclusive(tmp_path)
+    try:
+        with pytest.raises(MapStoreBusy): MapStoreLock.acquire_shared(tmp_path)
+        with pytest.raises(MapStoreBusy): MapStoreLock.acquire_exclusive(tmp_path)
+        assert exclusive.path == tmp_path/'.fleet_localization.lock'
+    finally: exclusive.release()
+
+
 def test_context_releases_after_normal_and_exceptional_exit(tmp_path):
     with MapStoreLock(tmp_path,shared=True): pass
     with pytest.raises(RuntimeError):

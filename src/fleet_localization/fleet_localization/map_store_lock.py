@@ -35,6 +35,11 @@ class MapStoreLock:
             raise MapStoreBusy(f'cannot acquire {kind} lock for map_store {self.store}') from exc
         return self
 
+    @property
+    def path(self) -> Path:
+        """The one stable inode used by every reader and writer."""
+        return self.store / '.fleet_localization.lock'
+
     def release(self):
         if self._file is not None:
             fcntl.flock(self._file.fileno(), fcntl.LOCK_UN)

@@ -15,5 +15,6 @@ setup(
     entry_points={'console_scripts': [
         'readiness = fleet_localization.readiness:main',
         'health = fleet_localization.health:main',
+        'map_save = fleet_localization.map_save:main',
     ]},
 )

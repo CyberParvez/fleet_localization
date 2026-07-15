@@ -83,3 +83,21 @@ class LocalizationHealthState:
         if persisted == 'degraded': return 'degraded', problems
         if problems: return 'localizing', problems
         return 'localized', []
+
+
+@dataclass
+class MappingHealthState:
+    freshness: float = 1.0
+    persistence: Persistence = field(default_factory=Persistence)
+
+    def evaluate(self, now: float, base_problems: list[str], lifecycle_active: bool,
+                 map_at: float | None, tf_current: bool):
+        problems = list(base_problems)
+        if not lifecycle_active: problems.append('SLAM lifecycle inactive')
+        if map_at is None: problems.append('map unavailable')
+        elif now - map_at > self.freshness: problems.append('map stale')
+        if not tf_current: problems.append('map-to-sensor transform unavailable')
+        persisted = self.persistence.update(now, problems)
+        if persisted == 'degraded': return 'degraded', problems
+        if problems: return 'waiting for mapping', problems
+        return 'mapping', []

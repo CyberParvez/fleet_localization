@@ -1,0 +1,40 @@
+Panels:
+  - Class: rviz_common/Displays
+Visualization Manager:
+  Global Options:
+    Fixed Frame: @PREFIX@/map
+  Displays:
+    - Class: rviz_default_plugins/Map
+      Name: @ROBOT@ Mapping Map
+      Topic:
+        Value: @NS@/map
+        Durability Policy: Transient Local
+        Reliability Policy: Reliable
+    - Class: rviz_default_plugins/LaserScan
+      Name: @ROBOT@ Scan
+      Topic:
+        Value: @NS@/scan
+        Reliability Policy: Best Effort
+    - Class: rviz_default_plugins/RobotModel
+      Name: @ROBOT@ Model
+      Description Source: Topic
+      Description Topic:
+        Value: @NS@/robot_description
+    - Class: rviz_default_plugins/Odometry
+      Name: @ROBOT@ Filtered Odometry
+      Topic:
+        Value: @NS@/odometry/filtered
+    - Class: rviz_default_plugins/TF
+      Name: @ROBOT@ TF
+      Frames:
+        All Enabled: false
+        @PREFIX@/map: {Value: true}
+        @PREFIX@/odom: {Value: true}
+        @PREFIX@/base_footprint: {Value: true}
+        @PREFIX@/base_link: {Value: true}
+        @PREFIX@/base_scan: {Value: true}
+        @PREFIX@/imu_link: {Value: true}
+Tools: []
+Window Geometry:
+  Width: 1000
+  Height: 700

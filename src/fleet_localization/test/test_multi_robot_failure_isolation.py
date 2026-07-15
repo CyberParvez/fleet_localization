@@ -18,7 +18,8 @@ def test_launch_has_no_cross_process_or_fleet_shutdown_targets():
 def test_runtime_resources_are_created_per_invocation():
     launch = (ROOT / 'launch' / 'localization.launch.py').read_text()
     renderer = (ROOT / 'fleet_localization' / 'operator_config.py').read_text()
-    assert "lock=MapStoreLock.acquire_shared" in launch
+    assert 'MapStoreLock.acquire_shared(manifest.map_store)' in launch
+    assert 'MapStoreLock.acquire_exclusive(manifest.map_store)' in launch
     assert "render_rviz(" in launch
     assert 'NamedTemporaryFile' in renderer and 'delete=False' in renderer
     assert "prefix=f'{robot}_localization_'" in renderer

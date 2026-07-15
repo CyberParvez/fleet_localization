@@ -17,6 +17,12 @@ class MapCatalogError(FleetConfigError):
     pass
 
 
+def validate_map_id(map_id: str) -> str:
+    if not isinstance(map_id, str) or not _SAFE_ID.fullmatch(map_id):
+        raise MapCatalogError(f'unsafe map ID: {map_id!r}')
+    return map_id
+
+
 @dataclass(frozen=True)
 class ResolvedMap:
     map_id: str
@@ -59,8 +65,7 @@ def _inside(path: Path, root: Path, label: str) -> Path:
 def resolve_map(fleet_config: str | Path, map_id: str = '') -> ResolvedMap:
     config = load_fleet_config(fleet_config)
     selected = map_id or config.map_id
-    if not isinstance(selected, str) or not _SAFE_ID.fullmatch(selected):
-        raise MapCatalogError(f'unsafe map ID: {selected!r}')
+    validate_map_id(selected)
     store = config.map_store.resolve()
     if not store.is_dir():
         raise MapCatalogError(f'map_store does not exist: {store}')
