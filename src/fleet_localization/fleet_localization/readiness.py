@@ -12,6 +12,8 @@ from tf2_ros import Buffer, TransformListener
 from .interfaces import resolve_robot
 from .validation import covariance_valid, finite, stamp_seconds
 
+_CLOCK_EPOCH_ROLLBACK_SECONDS = 1.0
+
 class Readiness(Node):
     def __init__(self):
         super().__init__('readiness')
@@ -28,7 +30,13 @@ class Readiness(Node):
         self.buffer=Buffer(); self.listener=TransformListener(self.buffer,self)
         self.timer=self.create_timer(0.1,self.check)
         self.exit_code=None
-    def clock(self,msg): self.sim_now=stamp_seconds(msg.clock)
+    def clock(self,msg):
+        now=stamp_seconds(msg.clock)
+        if self.sim_now > 0.0 and now + _CLOCK_EPOCH_ROLLBACK_SECONDS < self.sim_now:
+            # Gazebo may restart its simulation epoch. Measurements accepted in
+            # the prior epoch must not poison ordering or freshness in the new one.
+            self.valid.clear(); self.reasons.clear(); self.last_stamp.clear()
+        self.sim_now=now
     def _common(self,key,msg,frame,values,covariance=None,required=()):
         stamp=stamp_seconds(msg.header.stamp); reason=None
         if msg.header.frame_id != frame: reason=f'frame {msg.header.frame_id!r}, expected {frame!r}'
@@ -37,9 +45,10 @@ class Readiness(Node):
         elif key in self.last_stamp and stamp+0.001 < self.last_stamp[key]: reason='out-of-order timestamp'
         elif not finite(values): reason='non-finite measurement'
         elif covariance is not None and not covariance_valid(covariance,required): reason='invalid covariance'
-        self.last_stamp[key]=max(stamp,self.last_stamp.get(key,0.0))
         if reason: self.valid.pop(key,None); self.reasons[key]=reason
-        else: self.valid[key]=stamp; self.reasons.pop(key,None)
+        else:
+            self.last_stamp[key]=stamp
+            self.valid[key]=stamp; self.reasons.pop(key,None)
     def wheel(self,m):
         self._common('wheel',m,self.interface.frame('odom'),[m.twist.twist.linear.x,m.twist.twist.angular.z],m.twist.covariance,(0,35))
         if m.child_frame_id != self.interface.frame('base_footprint'):
