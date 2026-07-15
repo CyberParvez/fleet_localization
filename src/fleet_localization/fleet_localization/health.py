@@ -23,6 +23,12 @@ from .validation import (LocalizationHealthState, MappingHealthState, Measuremen
 _CLOCK_EPOCH_ROLLBACK_SECONDS = 1.0
 
 
+def tf_timestamp_current(sim_now, transform_time, freshness, future_tolerance):
+    """Accept AMCL's bounded future-dated TF without relaxing message validation."""
+    age = sim_now - transform_time
+    return -future_tolerance <= age <= freshness
+
+
 class Health(Node):
     def __init__(self):
         super().__init__('localization_health')
@@ -33,6 +39,7 @@ class Health(Node):
         self.interface=resolve_robot(self.get_parameter('fleet_config').value,self.get_parameter('robot').value)
         profile=Path(get_package_share_directory('fleet_localization'))/'config'/'burger_sim.yaml'
         tuning=yaml.safe_load(profile.read_text())['health']
+        self.tf_future_tolerance=float(tuning['tf_future_tolerance_seconds'])
         self.obs=Observations()
         self.validator=MeasurementValidator(float(tuning['freshness_seconds']),
             float(tuning['future_tolerance_seconds']),float(tuning['ordering_tolerance_seconds']))
@@ -141,7 +148,8 @@ class Health(Node):
         try:
             transform=self.buffer.lookup_transform(self.interface.frame('map'),self.interface.frame('base_scan'),rclpy.time.Time())
             transform_time=stamp_seconds(transform.header.stamp)
-            tf_current=0.0 <= self.sim_now-transform_time <= self.state.freshness
+            tf_current=tf_timestamp_current(self.sim_now,transform_time,self.state.freshness,
+                self.tf_future_tolerance)
         except Exception: pass
         problems=self.obs.problems(self.sim_now,('wheel','imu','scan','ekf'))
         problems.extend(f'{key}: {reason}' for key,reason in self.obs.invalid.items()

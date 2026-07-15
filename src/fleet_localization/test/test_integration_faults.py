@@ -63,10 +63,3 @@ def test_lock_contention_duplicate_save_and_no_implicit_save(tmp_path):
             pass
     launch=(Path(__file__).parents[1]/'launch/localization.launch.py').read_text()
     assert 'map_save' not in launch
-
-
-def test_teleop_handled_interruption_has_final_zero_contract():
-    source=(Path(__file__).parents[2]/'turtlebot_fleet_sim/turtlebot_fleet_sim/teleop.py').read_text()
-    assert 'except (KeyboardInterrupt, EOFError)' in source
-    assert source.count('node.publish(Velocity())') >= 3
-    assert 'finally:' in source

@@ -3,6 +3,7 @@ import pytest
 import yaml
 
 from fleet_localization.map_catalog import MapCatalogError, resolve_map
+from turtlebot_fleet_sim.fleet_config import load_fleet_config
 
 
 MAPS = Path(__file__).parents[2] / 'turtlebot_fleet_sim/config/maps'
@@ -35,3 +36,17 @@ def test_known_mismatch_names_map_metadata_and_active_world(tmp_path):
     assert 'asymmetric_indoor_v1' in message
     assert "'asymmetric_indoor'" in message
     assert "'turtlebot3_world'" in message
+
+
+def test_simulator_override_is_process_local_not_localization_provenance(tmp_path):
+    manifest = write_manifest(tmp_path, 'turtlebot3_world', 'turtlebot3_world_v1')
+    assert load_fleet_config(manifest, world='asymmetric_indoor').world == 'asymmetric_indoor'
+    assert load_fleet_config(manifest).world == 'turtlebot3_world'
+    assert resolve_map(manifest).world == 'turtlebot3_world'
+
+
+def test_supported_custom_workflow_uses_one_manifest_for_world_and_map(tmp_path):
+    manifest = write_manifest(tmp_path, 'asymmetric_indoor', 'asymmetric_indoor_v1')
+    simulator, selected_map = load_fleet_config(manifest), resolve_map(manifest)
+    assert (simulator.world, selected_map.world, selected_map.map_id) == (
+        'asymmetric_indoor', 'asymmetric_indoor', 'asymmetric_indoor_v1')

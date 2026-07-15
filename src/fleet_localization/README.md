@@ -72,9 +72,22 @@ then start this localization launch independently once per robot. Mapping uses
 the same launch with `mode:=mapping` only after every localization process has
 released its shared map-store lock. Use the separate simulation-package teleop
 launch for one selected robot and the explicit `map_save` command for a new ID.
+Always pass the same manifest to simulation, localization, teleop, and map-save.
+The simulator's optional `world:=...` argument is simulator-only and does not
+change localization/map provenance. For a custom-world workflow, change both the
+world and map ID in the manifest itself.
 
 Automated verification is headless. GUI Gazebo, robot-scoped RViz manual pose,
 visual scan/map alignment, and physical keyboard release are manual host checks;
 they do not introduce alternate launch paths. Verification and performance
 claims cover two robots. Physical adapters, automatic initial pose, a shared
 fleet frame, and concurrent mapping remain outside this demo.
+
+For repeatable public-process headless checks, use
+`scripts/run_headless_localization_demo.sh ABSOLUTE_FLEET_YAML robot1 robot2`.
+It launches the canonical simulator and one canonical localization process per
+robot, then requires health, map, and filtered-odometry output from each. After
+stopping localization, `scripts/run_headless_mapping_smoke.sh
+ABSOLUTE_FLEET_YAML robot1 NEW_MAP_ID` exercises the canonical mapping,
+explicit-save, and load-the-new-map boundaries. The scripts deliberately accept
+no world override: the manifest is the single provenance source.

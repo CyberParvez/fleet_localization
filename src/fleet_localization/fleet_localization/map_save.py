@@ -1,11 +1,14 @@
 """Supported explicit map save command for a live mapping session."""
 import argparse
 import sys
+import time
 
 import rclpy
 from lifecycle_msgs.srv import GetState
+from nav_msgs.msg import OccupancyGrid
 from rclpy.executors import ExternalShutdownException
 from rclpy.parameter_client import AsyncParameterClient
+from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 from slam_toolbox.srv import SaveMap
 
 from .interfaces import resolve_robot
@@ -30,6 +33,35 @@ def _call(node, client, request, label, timeout=10.0):
     return future.result()
 
 
+def _save_with_replay(node, client, request, topic, timeout=30.0, period=0.1):
+    """Replay one retained map so upstream's late volatile saver receives it."""
+    if not client.wait_for_service(timeout_sec=10.0):
+        raise RuntimeError('SLAM save service is unavailable; start the matching mapping session first')
+    qos = QoSProfile(depth=1, reliability=ReliabilityPolicy.RELIABLE,
+                     durability=DurabilityPolicy.TRANSIENT_LOCAL)
+    captured = []
+    subscription = node.create_subscription(OccupancyGrid, topic,
+        lambda message: captured.append(message) if not captured else None, qos)
+    deadline = time.monotonic() + 10.0
+    while not captured and time.monotonic() < deadline:
+        rclpy.spin_once(node, timeout_sec=0.1)
+    node.destroy_subscription(subscription)
+    if not captured:
+        raise RuntimeError(f'current map is unavailable on {topic}; wait for mapping output')
+    publisher = node.create_publisher(OccupancyGrid, topic, qos)
+    try:
+        future = client.call_async(request)
+        deadline = time.monotonic() + timeout
+        while not future.done() and time.monotonic() < deadline:
+            publisher.publish(captured[0])
+            rclpy.spin_once(node, timeout_sec=period)
+        if not future.done() or future.result() is None:
+            raise RuntimeError('SLAM save service did not complete successfully')
+        return future.result()
+    finally:
+        node.destroy_publisher(publisher)
+
+
 def run(args):
     interface = resolve_robot(args.fleet_config, args.robot)
     node = rclpy.create_node('map_save', namespace=interface.namespace)
@@ -50,7 +82,8 @@ def run(args):
         with MapTransaction(args.fleet_config, args.map_id) as transaction:
             request = SaveMap.Request()
             request.name.data = str(transaction.save_prefix)
-            response = _call(node, node.create_client(SaveMap, 'slam_toolbox/save_map'), request, 'SLAM save service', 30.0)
+            response = _save_with_replay(node, node.create_client(SaveMap, 'slam_toolbox/save_map'),
+                request, interface.map_topic, 30.0)
             if response.result != SaveMap.Response.RESULT_SUCCESS:
                 raise RuntimeError(f'SLAM save failed with result code {response.result}')
             resolved = transaction.commit()

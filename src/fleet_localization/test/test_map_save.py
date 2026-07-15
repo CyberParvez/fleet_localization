@@ -6,6 +6,8 @@ import yaml
 
 from fleet_localization import map_save
 from fleet_localization.map_catalog import MapCatalogError
+from nav_msgs.msg import OccupancyGrid
+from rclpy.qos import DurabilityPolicy, ReliabilityPolicy
 
 
 def manifest(tmp_path):
@@ -39,6 +41,7 @@ def prepare(monkeypatch,config,identity=None):
     monkeypatch.setattr(map_save,'AsyncParameterClient',Parameters)
     monkeypatch.setattr(map_save.rclpy,'create_node',lambda *_a,**_k:Node())
     monkeypatch.setattr(map_save.rclpy,'spin_until_future_complete',lambda *_a,**_k:None)
+    monkeypatch.setattr(map_save,'_save_with_replay',lambda *_a,**_k:SimpleNamespace(result=0))
 
 
 def args(config,map_id='new_map'):
@@ -76,14 +79,52 @@ def test_existing_and_unsafe_ids_fail_before_upstream_save(tmp_path,monkeypatch)
 
 
 def test_upstream_failure_cleans_staging_and_no_shutdown_save_exists(tmp_path,monkeypatch):
-    config=manifest(tmp_path); prepare(monkeypatch,config); count=0
-    def call(*_a,**_k):
-        nonlocal count; count+=1
-        if count == 1: return SimpleNamespace(current_state=SimpleNamespace(label='active'))
-        return SimpleNamespace(result=255)
-    monkeypatch.setattr(map_save,'_call',call)
+    config=manifest(tmp_path); prepare(monkeypatch,config)
+    monkeypatch.setattr(map_save,'_call',lambda *_a,**_k:SimpleNamespace(current_state=SimpleNamespace(label='active')))
+    monkeypatch.setattr(map_save,'_save_with_replay',lambda *_a,**_k:SimpleNamespace(result=255))
     with pytest.raises(RuntimeError,match='result code 255'): map_save.run(args(config))
     assert not (tmp_path/'maps'/'new_map').exists()
     assert not list((tmp_path/'maps').glob('.fleet-map-staging-*'))
     launch=(Path(__file__).parents[1]/'launch'/'localization.launch.py').read_text()
     assert 'map_save' not in launch
+
+
+def test_replay_uses_exact_topic_qos_and_cleans_transport(monkeypatch):
+    events=[]
+    class SaveFuture:
+        def done(self): return len(events) >= 2 and events.count('publish') >= 2
+        def result(self): return SimpleNamespace(result=0)
+    class Client:
+        def wait_for_service(self,timeout_sec): return True
+        def call_async(self,request): return SaveFuture()
+    class ReplayNode:
+        def create_subscription(self,msg_type,topic,callback,qos):
+            events.append(('subscription',msg_type,topic,qos)); self.callback=callback; return 'sub'
+        def destroy_subscription(self,value): events.append(('destroy_subscription',value))
+        def create_publisher(self,msg_type,topic,qos):
+            events.append(('publisher',msg_type,topic,qos))
+            return SimpleNamespace(publish=lambda message:events.append('publish'))
+        def destroy_publisher(self,value): events.append('destroy_publisher')
+    node=ReplayNode(); message=OccupancyGrid()
+    def spin(*_args,**_kwargs):
+        if hasattr(node,'callback'): node.callback(message); del node.callback
+    monkeypatch.setattr(map_save.rclpy,'spin_once',spin)
+    response=map_save._save_with_replay(node,Client(),object(),'/robot1/map',period=0.0)
+    assert response.result == 0 and events.count('publish') == 2
+    subscription=events[0]
+    assert subscription[1:3] == (OccupancyGrid,'/robot1/map')
+    assert subscription[3].reliability == ReliabilityPolicy.RELIABLE
+    assert subscription[3].durability == DurabilityPolicy.TRANSIENT_LOCAL
+    assert 'destroy_publisher' in events and ('destroy_subscription','sub') in events
+
+
+def test_replay_fails_clearly_and_cleans_when_no_map(monkeypatch):
+    node=SimpleNamespace(create_subscription=lambda *_a,**_k:'sub',
+        destroy_subscription=lambda value:setattr(node,'destroyed',value))
+    ticks=iter((0.0,11.0))
+    monkeypatch.setattr(map_save.time,'monotonic',lambda:next(ticks))
+    monkeypatch.setattr(map_save.rclpy,'spin_once',lambda *_a,**_k:None)
+    client=SimpleNamespace(wait_for_service=lambda timeout_sec:True)
+    with pytest.raises(RuntimeError,match='current map is unavailable'):
+        map_save._save_with_replay(node,client,object(),'/robot1/map')
+    assert node.destroyed == 'sub'

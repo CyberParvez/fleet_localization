@@ -18,6 +18,7 @@ ekf_filter_node:
 health:
   freshness_seconds: 1.0
   future_tolerance_seconds: 0.1
+  tf_future_tolerance_seconds: 1.0
   ordering_tolerance_seconds: 0.001
   degrade_after_seconds: 2.0
   recover_after_seconds: 2.0

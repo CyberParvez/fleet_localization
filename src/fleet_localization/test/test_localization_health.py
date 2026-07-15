@@ -1,4 +1,12 @@
+from fleet_localization.health import tf_timestamp_current
 from fleet_localization.validation import LocalizationHealthState, Persistence
+
+
+def test_amcl_predicted_tf_is_accepted_only_within_profile_bound():
+    assert tf_timestamp_current(10.0, 11.0, 1.0, 1.0)
+    assert tf_timestamp_current(10.0, 9.0, 1.0, 1.0)
+    assert not tf_timestamp_current(10.0, 11.001, 1.0, 1.0)
+    assert not tf_timestamp_current(10.0, 8.999, 1.0, 1.0)
 
 
 def healthy_state():

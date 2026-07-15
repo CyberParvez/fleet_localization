@@ -20,10 +20,17 @@ Simulation exposes only the canonical public source boundary for each robot:
 The internal `_sim` topics are an implementation detail. Simulation publishes body and
 sensor TF only; localization is responsible for `odom -> base_footprint`.
 
-The standard `turtlebot3_world` remains the manifest default. The same launch
-also accepts the project-owned offline world with `world:=asymmetric_indoor`.
-Use map ID `asymmetric_indoor_v1` and change the manifest's simulation world and
-map ID together; mismatched world metadata is rejected before AMCL activation.
+The standard `turtlebot3_world` remains the manifest default. For a complete
+custom-world localization or mapping workflow, create a fleet manifest that sets
+both `simulation.world: asymmetric_indoor` and `fleet.map_id:
+asymmetric_indoor_v1`, then pass that same manifest to every command. Map
+provenance is always taken from the manifest and mismatches are rejected before
+AMCL activation.
+
+The simulator alone accepts `world:=asymmetric_indoor` as a temporary,
+simulator-process-only override. It does **not** alter the manifest read by
+localization, mapping, or map saving. Use it only for simulation-only inspection,
+not for an end-to-end localization workflow.
 
 Teleoperation is a separate, explicitly selected process:
 
