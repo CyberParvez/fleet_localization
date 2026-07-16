@@ -5,7 +5,7 @@ Status: implemented
 Commit: `97d3df0`
 Verification: Both packages build successfully. The complete suite passes 105/105 tests with zero errors, failures, or skips; `git diff --check` passes. Automated coverage includes both strict world/map pairs, GUI/headless graph equivalence, selected-robot TwistStamped teleop safety, atomic and isolated fault boundaries, two independent localization contracts, mapping lock/save/load behavior, duplicate rejection, lifecycle/timestamp/TF failures, and health persistence. Live headless custom-world runs spawned both robots and reached `FLEET_READY`; a custom robot1 readiness gate completed, loaded the 60x50 custom map, and reached active map-server/AMCL lifecycle.
 Deviations: The custom world is deliberately capped at 0.2x real time so headless ROS bridge, sensor, and TF delivery remains timestamp-consistent. The execution harness forcibly ended calibrated long-running groups after about 32 wall seconds, before robot2 at 0.2x and the subsequent custom live mapping/save/load cycle completed. Those workflows are covered by public-contract/integration tests and the equivalent standard-world live proofs from Slices 04-05. GUI/RViz visual alignment and physical keyboard checks require an interactive display/operator and remain manual verification limitations, not claimed evidence.
-Follow-ups: Review fix `69fa34e` adds collision-free cross-world spawns, manifest-derived manual initialization, behavioral teleop proof, unambiguous world provenance docs/tests, TF-prediction-aware health, checked-in public-process harnesses, and reliable retained-map replay into the upstream volatile saver. One-robot, two-robot, and disposable mapping/save/duplicate/reload workflows pass live; 134 combined tests pass. `FUP-001` through `FUP-005` remain deferred.
+Follow-ups: Review fixes `69fa34e`, `2a3a389`, and `1889814` add collision-free cross-world spawns, manifest-derived manual initialization, behavioral teleop proof, unambiguous world provenance, strict runtime/map validation, TF-authority guards, TF-prediction-aware health, checked-in public-process harnesses, and reliable retained-map replay into the upstream volatile saver. One-robot, two-robot, and disposable mapping/save/duplicate/reload workflows pass live; final cleanup verification passes 142 combined tests. `FUP-001` through `FUP-005` remain deferred.
 
 ## Context
 - Repository: `/home/syncrobot/localization` (not initialized as a Git repository at planning time)
@@ -17,7 +17,7 @@ Follow-ups: Review fix `69fa34e` adds collision-free cross-world spawns, manifes
 - Alignment source: [2_alignment.md](2_alignment.md)
 - Roadmap source: [3_plan.md](3_plan.md)
 - Routing source: [CURRENT.md](CURRENT.md)
-- UX source: [../../about/05_ux_decision_catalogue.md](../../about/05_ux_decision_catalogue.md)
+- UX source: [../../../about/05_ux_decision_catalogue.md](../../../about/05_ux_decision_catalogue.md)
 
 ## Slice Goal
 Complete the approved demo without changing its architecture: add the project-owned asymmetric indoor world and a geometrically matching immutable map with enforced world provenance; add separately launched, robot-scoped `TwistStamped` keyboard teleoperation with stop-on-release and stop-on-exit safety; prove both GUI and headless simulation modes; and assemble final two-robot localization, single-robot mapping, isolation, and fault evidence across the completed slices.
@@ -25,7 +25,7 @@ Complete the approved demo without changing its architecture: add the project-ow
 This is an integration and hardening slice. It must extend the canonical launch, configuration, map, health, locking, and test surfaces established by slices 01-05 rather than introduce parallel launch paths or reimplement their behavior.
 
 ## Repository Rules
-- Consulted: [1_design.md](1_design.md), [2_alignment.md](2_alignment.md), [3_plan.md](3_plan.md), [CURRENT.md](CURRENT.md), preceding `3_plan_slice_*.md` contracts, and [../../about/05_ux_decision_catalogue.md](../../about/05_ux_decision_catalogue.md). `docs/rules/README.md` and repository rule files do not exist.
+- Consulted: [1_design.md](1_design.md), [2_alignment.md](2_alignment.md), [3_plan.md](3_plan.md), [CURRENT.md](CURRENT.md), preceding `3_plan_slice_*.md` contracts, and [../../../about/05_ux_decision_catalogue.md](../../../about/05_ux_decision_catalogue.md). `docs/rules/README.md` and repository rule files do not exist.
 - Constraints applied: planning only; preserve the two-package boundary, exactly-one-robot localization invocation, independent prefixed map frames, one immutable shared map store, external Jazzy dependencies, one canonical project simulator launch, stamped commands only, operator-safe motion, and unrelated user changes.
 - Rule updates: None
 

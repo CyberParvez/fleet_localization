@@ -16,7 +16,7 @@ Follow-ups: Review fix `483aa5c` canonically validates complete staging before a
 - Source design: [1_design.md](1_design.md)
 - Source alignment: [2_alignment.md](2_alignment.md)
 - Roadmap: [3_plan.md](3_plan.md)
-- UX decisions: [../../about/05_ux_decision_catalogue.md](../../about/05_ux_decision_catalogue.md)
+- UX decisions: [../../../about/05_ux_decision_catalogue.md](../../../about/05_ux_decision_catalogue.md)
 - Prerequisites: Slice 01's strict manifest/map-store/world model and simulated sensor contract; Slice 02's selected-robot readiness, EKF, health, and odometry TF; Slice 03's canonical map catalogue and session-lock abstraction; Slice 04's proof that independent localization sessions share map data safely.
 
 ## Slice Goal
@@ -25,7 +25,7 @@ Add an explicit `mapping` mode to one separately launched `fleet_localization` i
 This slice proves one authoritative map-creation session and the transition back to later localization. It does not add teleoperation, an alternate world, or final cross-mode fault hardening assigned to Slice 06.
 
 ## Repository Rules
-- Consulted: [1_design.md](1_design.md), [2_alignment.md](2_alignment.md), [3_plan.md](3_plan.md), [CURRENT.md](CURRENT.md), neighboring slice plans, and [../../about/05_ux_decision_catalogue.md](../../about/05_ux_decision_catalogue.md). `docs/rules/README.md` and repository rule files do not exist.
+- Consulted: [1_design.md](1_design.md), [2_alignment.md](2_alignment.md), [3_plan.md](3_plan.md), [CURRENT.md](CURRENT.md), neighboring slice plans, and [../../../about/05_ux_decision_catalogue.md](../../../about/05_ux_decision_catalogue.md). `docs/rules/README.md` and repository rule files do not exist.
 - Constraints applied: exactly one selected robot per invocation; one canonical launch and configuration path; exclusive map-store ownership for mapping; asynchronous fresh-map SLAM only; explicit non-overwriting save; prefixed frames; EKF/SLAM TF ownership; no AMCL/map server in mapping mode; no hidden fallback or destructive option.
 - Rule updates: None
 

@@ -16,7 +16,7 @@ Follow-ups: None in slice scope. `FUP-001` through `FUP-005` remain deferred.
 - Source design: [1_design.md](1_design.md)
 - Source alignment: [2_alignment.md](2_alignment.md)
 - Roadmap: [3_plan.md](3_plan.md)
-- UX decisions: [../../about/05_ux_decision_catalogue.md](../../about/05_ux_decision_catalogue.md)
+- UX decisions: [../../../about/05_ux_decision_catalogue.md](../../../about/05_ux_decision_catalogue.md)
 - Prerequisites: Slice 01's strict manifest/map-store resolution and simulated sensor/TF contract; Slice 02's selected-robot launch, readiness gate, EKF, odometry TF ownership, and health publisher.
 
 ## Slice Goal
@@ -25,7 +25,7 @@ Extend one separately selected robot's working EKF invocation into a complete ex
 This slice proves one end-to-end operator workflow. It does not yet prove two concurrent localization invocations; that is Slice 04.
 
 ## Repository Rules
-- Consulted: [1_design.md](1_design.md), [2_alignment.md](2_alignment.md), [3_plan.md](3_plan.md), [CURRENT.md](CURRENT.md), and [../../about/05_ux_decision_catalogue.md](../../about/05_ux_decision_catalogue.md). `docs/rules/README.md` and repository rule files do not exist.
+- Consulted: [1_design.md](1_design.md), [2_alignment.md](2_alignment.md), [3_plan.md](3_plan.md), [CURRENT.md](CURRENT.md), and [../../../about/05_ux_decision_catalogue.md](../../../about/05_ux_decision_catalogue.md). `docs/rules/README.md` and repository rule files do not exist.
 - Constraints applied: one selected robot per invocation; one canonical strict configuration path; prefixed frames without leading `/`; independent map frame/topic; automatic lifecycle after readiness; immutable map IDs; robot-scoped RViz and initialization; measurable health; no compatibility aliases or fleet launcher.
 - Rule updates: None
 

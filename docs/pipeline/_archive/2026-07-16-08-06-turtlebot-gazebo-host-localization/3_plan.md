@@ -6,7 +6,7 @@
 - Feature folder: `docs/pipeline/turtlebot-gazebo-host-localization`
 - Design source: [1_design.md](1_design.md)
 - Alignment source: [2_alignment.md](2_alignment.md)
-- UX source: [../../about/05_ux_decision_catalogue.md](../../about/05_ux_decision_catalogue.md)
+- UX source: [../../../about/05_ux_decision_catalogue.md](../../../about/05_ux_decision_catalogue.md)
 
 ## Vertical Slices
 1. **Fleet Contract And Shared-World Simulation** — Establish the ROS workspace, strict shared fleet manifest, project-owned multi-robot Gazebo Harmonic launch, official TurtleBot3 Burger asset integration, atomic readiness, isolated topics/frames, and exclusive simulator TF boundary.
@@ -40,6 +40,6 @@ No deferred item is pulled into this roadmap.
 - This roadmap is an index only. `3_plan.md` is not a valid implementation source for `4_Implement`.
 
 ## Repository Rules
-- Consulted: [1_design.md](1_design.md), [2_alignment.md](2_alignment.md), [CURRENT.md](CURRENT.md), and [../../about/05_ux_decision_catalogue.md](../../about/05_ux_decision_catalogue.md); `docs/rules/README.md` and rule files do not exist.
+- Consulted: [1_design.md](1_design.md), [2_alignment.md](2_alignment.md), [CURRENT.md](CURRENT.md), and [../../../about/05_ux_decision_catalogue.md](../../../about/05_ux_decision_catalogue.md); `docs/rules/README.md` and rule files do not exist.
 - Constraints applied: Preserved two packages, per-robot localization invocation, independent map frames, one canonical interface, immutable maps, stable deferred IDs, and vertical end-to-end slice order.
 - Rule updates: None

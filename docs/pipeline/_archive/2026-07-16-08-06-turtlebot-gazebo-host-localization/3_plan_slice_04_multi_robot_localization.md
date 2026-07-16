@@ -17,7 +17,7 @@ Follow-ups: None in slice scope. `FUP-001` through `FUP-005` remain deferred.
 - Alignment source: [2_alignment.md](2_alignment.md)
 - Roadmap source: [3_plan.md](3_plan.md)
 - Routing source: [CURRENT.md](CURRENT.md)
-- UX source: [../../about/05_ux_decision_catalogue.md](../../about/05_ux_decision_catalogue.md)
+- UX source: [../../../about/05_ux_decision_catalogue.md](../../../about/05_ux_decision_catalogue.md)
 - Required predecessors: Slice 01's complete two-robot simulation and strict manifest contract, Slice 02's independently selected EKF/readiness/health path, and Slice 03's complete single-robot map-server/AMCL/RViz workflow and shared map-store read lock.
 
 ## Exact Slice
@@ -26,7 +26,7 @@ Prove the existing one-robot localization invocation is safely repeatable by run
 This slice is primarily concurrency hardening and end-to-end proof. It must repair only identity leakage, global-name collisions, process-coupled shutdown, or non-reentrant resource handling discovered in the Slice 01-03 implementation. It does not add a fleet localization launcher, a common map frame, mapping, map writes, teleoperation, an alternate world, or performance guarantees beyond two robots.
 
 ## Repository Rules
-- Consulted: [1_design.md](1_design.md), [2_alignment.md](2_alignment.md), [3_plan.md](3_plan.md), [CURRENT.md](CURRENT.md), Slice plans 01-03, and [../../about/05_ux_decision_catalogue.md](../../about/05_ux_decision_catalogue.md). `docs/rules/README.md` and repository rule files do not exist.
+- Consulted: [1_design.md](1_design.md), [2_alignment.md](2_alignment.md), [3_plan.md](3_plan.md), [CURRENT.md](CURRENT.md), Slice plans 01-03, and [../../../about/05_ux_decision_catalogue.md](../../../about/05_ux_decision_catalogue.md). `docs/rules/README.md` and repository rule files do not exist.
 - Constraints applied: one selected robot per invocation; two invocations are started separately; identical map bytes do not create a shared TF frame; all runtime identity is derived from the selected manifest robot; shared map access is read-only and concurrent; operator controls and status remain robot-scoped; no compatibility aliases or orchestration shortcut.
 - Rule updates: None
 

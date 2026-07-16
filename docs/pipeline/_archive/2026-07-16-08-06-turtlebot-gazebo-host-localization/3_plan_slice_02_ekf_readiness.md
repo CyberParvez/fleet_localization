@@ -17,14 +17,14 @@ Follow-ups: Review fixes `7b6bd1b` add strict runtime timestamp/frame/covariance
 - Alignment source: [2_alignment.md](2_alignment.md)
 - Roadmap source: [3_plan.md](3_plan.md)
 - Routing source: [CURRENT.md](CURRENT.md)
-- UX source: [../../about/05_ux_decision_catalogue.md](../../about/05_ux_decision_catalogue.md)
+- UX source: [../../../about/05_ux_decision_catalogue.md](../../../about/05_ux_decision_catalogue.md)
 - Required predecessor: slice 01 must provide the `fleet_localization` package skeleton, strict fleet-manifest parser, selected-robot resolution, simulated sensor contract, prefixed body/sensor TF, and simulator suppression of odometry TF.
 
 ## Exact Slice
 Deliver one separately invoked, selected-robot local-estimation workflow. The invocation validates its robot from the shared fleet manifest, waits independently for wheel odometry, IMU, lidar, simulation time, and required body/sensor transforms, then starts one planar `robot_localization` EKF. The EKF publishes namespaced filtered odometry and is the only publisher of `<robot>/odom -> <robot>/base_footprint`. A robot-scoped health publisher makes readiness, estimator activity, timestamp/covariance faults, and recovery observable. This slice stops at local odometry; it does not load a map or establish a map transform.
 
 ## Repository Rules
-- Consulted: [1_design.md](1_design.md), [2_alignment.md](2_alignment.md), [3_plan.md](3_plan.md), [CURRENT.md](CURRENT.md), and [../../about/05_ux_decision_catalogue.md](../../about/05_ux_decision_catalogue.md); `docs/rules/README.md` and rule files do not exist.
+- Consulted: [1_design.md](1_design.md), [2_alignment.md](2_alignment.md), [3_plan.md](3_plan.md), [CURRENT.md](CURRENT.md), and [../../../about/05_ux_decision_catalogue.md](../../../about/05_ux_decision_catalogue.md); `docs/rules/README.md` and rule files do not exist.
 - Constraints applied: Preserve exactly one robot per localization invocation, strict configuration with no fallback interface, Jazzy simulation time and QoS policy, exclusive TF ownership, observable robot-scoped health, and external use of the installed `robot_localization` package.
 - Rule updates: None
 

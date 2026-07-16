@@ -22,4 +22,4 @@
 - Applied example: each `fleet_localization` invocation reports health for only its selected robot and isolates failures from other robot invocations.
 
 ## Validated Source Families
-- `docs/pipeline/turtlebot-gazebo-host-localization/2_alignment.md`
+- `docs/pipeline/_archive/2026-07-16-08-06-turtlebot-gazebo-host-localization/2_alignment.md`

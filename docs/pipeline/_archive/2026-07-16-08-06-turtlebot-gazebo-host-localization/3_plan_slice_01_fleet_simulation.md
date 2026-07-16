@@ -17,7 +17,7 @@ Follow-ups: None in slice scope. `FUP-001` through `FUP-005` remain deferred.
 - Alignment source: [2_alignment.md](2_alignment.md)
 - Roadmap source: [3_plan.md](3_plan.md)
 - Routing source: [CURRENT.md](CURRENT.md)
-- UX source: [../../about/05_ux_decision_catalogue.md](../../about/05_ux_decision_catalogue.md)
+- UX source: [../../../about/05_ux_decision_catalogue.md](../../../about/05_ux_decision_catalogue.md)
 
 ## Slice Goal
 Create a buildable ROS 2 Jazzy workspace and the `turtlebot_fleet_sim` package so one project-owned launch validates a strict shared fleet manifest, starts one Gazebo Harmonic world, and atomically exposes the complete configured TurtleBot3 Burger fleet through the canonical namespaced sensor, command, clock, and prefixed-body-TF boundary. This slice must prove two robots in the standard TurtleBot3 world while retaining schema support for N robots.
@@ -25,7 +25,7 @@ Create a buildable ROS 2 Jazzy workspace and the `turtlebot_fleet_sim` package s
 This slice establishes the source contract consumed by every later localization slice. It does not implement localization, mapping, RViz localization sessions, or teleoperation.
 
 ## Repository Rules
-- Consulted: [1_design.md](1_design.md), [2_alignment.md](2_alignment.md), [3_plan.md](3_plan.md), [CURRENT.md](CURRENT.md), and [../../about/05_ux_decision_catalogue.md](../../about/05_ux_decision_catalogue.md). `docs/rules/README.md` and repository rule files do not exist.
+- Consulted: [1_design.md](1_design.md), [2_alignment.md](2_alignment.md), [3_plan.md](3_plan.md), [CURRENT.md](CURRENT.md), and [../../../about/05_ux_decision_catalogue.md](../../../about/05_ux_decision_catalogue.md). `docs/rules/README.md` and repository rule files do not exist.
 - Constraints applied: planning only; preserve two-package ownership; use one project-supported fleet launch; reuse upstream Jazzy assets rather than vendoring them; keep localization per robot and out of this package; retain one canonical stamped command interface; validate the whole manifest before side effects; fail incomplete fleet startup atomically; preserve unrelated user work.
 - Rule updates: None
 
