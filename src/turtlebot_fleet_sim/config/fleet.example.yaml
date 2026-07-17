@@ -11,9 +11,9 @@ robots:
     namespace: /robot1
     frame_prefix: robot1
     model: burger
-    spawn: {x: -2.0, y: -1.5, z: 0.01, yaw: 0.0}
+    spawn: {x: -1.0, y: -1.5, z: 0.01, yaw: 0.0}
   - name: robot2
     namespace: /robot2
     frame_prefix: robot2
     model: burger
-    spawn: {x: 2.0, y: 1.5, z: 0.01, yaw: 3.14159}
+    spawn: {x: 1.0, y: 1.5, z: 0.01, yaw: 3.14159}
